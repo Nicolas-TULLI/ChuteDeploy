@@ -25,7 +25,7 @@ void setup() {
   latchServo.attach(latchServoPin); // attaches the servo on pin 9 to the servo object
   pinMode(inFlightLedPin, OUTPUT);  // initialize in flight led pin as an output.
   pinMode(armedLedPin, OUTPUT);     // initialize armed led pin as an output.
-  Serial.begin(9600);               // initialize serial communication at 9600 bits per second
+//  Serial.begin(9600);               // initialize serial communication at 9600 bits per second
 }
 
 void loop() {
@@ -66,7 +66,7 @@ void in_flight(){
 void set_open_latch_pos(){
   openLatchPos = analogRead(lowTrimPotPin);           // reads the value of the potentiometer (value between 0 and 1023)
   openLatchPos = map(openLatchPos, 0, 1023, 0, 180);  // scale it to use it with the servo (value between 0 and 180)
-  Serial.println(openLatchPos);                       // writes servo value to serial out
+//  Serial.println(openLatchPos);                       // writes servo value to serial out
   move_latch(openLatchPos);                          // moves the latch to setted position
 }
 
