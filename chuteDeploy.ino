@@ -24,7 +24,7 @@ const int latchServoPin = 5;            // the number of the latch's servo signa
 const int inFlightLedPin = LED_BUILTIN; // the number of the in flight state led's pin
 const int armedLedPin = 6;              // the number of the armed state led's pin
 
-int openLatchPos = 0;                   // variable for open latch position setting
+int openLatchPos = 80;                   // variable for open latch position setting
 int closedLatchPos = 180;               // variable for closed latch position setting
 int flightPhase = 0;                    // variable to track flight phases
 int status;                             // tracks IMU's state
@@ -36,16 +36,20 @@ void setup() {
   Serial.begin(9600);               // initialize serial communication at 9600 bits per second
   pinMode(inFlightLedPin, OUTPUT);  // initialize in flight led pin as an output.
   pinMode(armedLedPin, OUTPUT);     // initialize armed led pin as an output.
+
+  // Servo setup
   latchServo.attach(latchServoPin); // attaches the servo on pin 9 to the servo object
+  open_latch();                     // puts the servo in the opened position
 
   // MPU9250 setup
   status = IMU.begin();             // start communication with IMU
   if (status < 0) {
-    Serial.println("IMU initialization unsuccessful");
-    Serial.println("Check IMU wiring or try cycling power");
-    Serial.print("Status: ");
+    Serial.print(F("IMU initialization unsuccessful, check IMU wiring!"));
+    Serial.print(F("Status: "));
     Serial.println(status);
     while(1) {}
+  }else{
+    Serial.println(F("IMU initialization successful"));
   }
   IMU.setAccelRange(MPU9250::ACCEL_RANGE_8G);         // setting the accelerometer full scale range to +/-8G 
   IMU.setGyroRange(MPU9250::GYRO_RANGE_500DPS);       // setting the gyroscope full scale range to +/-500 deg/s
@@ -54,9 +58,12 @@ void setup() {
 
   // BMP280 setup
   Serial.println(F("BMP280 test"));
-  if (!bmp.begin()) {
-    Serial.println(F("Could not find a valid BMP280 sensor, check wiring!"));
+  //initializing BMP280 with I²C alternate address
+  if (!bmp.begin(0x76)) {   
+    Serial.println(F("BMP280 initialization unsuccessful, check wiring!"));
     while (1);
+  }else{
+    Serial.println(F("BMP280 initialization successful"));
   }
 
   /* Default settings from datasheet. */
