@@ -17,6 +17,9 @@ Servo latchServo;                       // create servo object to control the la
 MPU9250 IMU(Wire,0x68);                 // an MPU9250 object with the MPU-9250 sensor on I2C bus 0 with address 0x68
 Adafruit_BMP280 bmp;                    // BMP280 from adafruit
 
+const bool debug = false;
+const bool displayFlightStats = true;
+
 const int armButtonPin = 2;             // the number of the arm pushbutton pin
 const int launchDetectorPin = 3;        // the number of the launch detector pin
 const int tiltButtonPin = 4;            // the number of the tilt button pin
@@ -24,10 +27,11 @@ const int latchServoPin = 5;            // the number of the latch's servo signa
 const int inFlightLedPin = LED_BUILTIN; // the number of the in flight state led's pin
 const int armedLedPin = 6;              // the number of the armed state led's pin
 
-int openLatchPos = 80;                   // variable for open latch position setting
+int openLatchPos = 80;                  // variable for open latch position setting
 int closedLatchPos = 180;               // variable for closed latch position setting
 int flightPhase = 0;                    // variable to track flight phases
-int status;                             // tracks IMU's state
+int IMUstatus;                          // tracks IMU's state
+int BMP280Status;                       // tracks BMP280's state
 
 //////////////////////
 // SETUP
@@ -42,14 +46,12 @@ void setup() {
   open_latch();                     // puts the servo in the opened position
 
   // MPU9250 setup
-  status = IMU.begin();             // start communication with IMU
-  if (status < 0) {
-    Serial.print(F("IMU initialization unsuccessful, check IMU wiring!"));
-    Serial.print(F("Status: "));
-    Serial.println(status);
-    while(1) {}
+  IMUstatus = IMU.begin();             // start communication with IMU
+  if (IMUstatus < 1) {                 // check IMU status
+    sDisp(F("IMU initialization unsuccessful, check IMU wiring ! Status: "));
+    sDisp(IMUstatus);
   }else{
-    Serial.println(F("IMU initialization successful"));
+    sDisp(F("IMU initialization successful."));
   }
   IMU.setAccelRange(MPU9250::ACCEL_RANGE_8G);         // setting the accelerometer full scale range to +/-8G 
   IMU.setGyroRange(MPU9250::GYRO_RANGE_500DPS);       // setting the gyroscope full scale range to +/-500 deg/s
@@ -57,13 +59,13 @@ void setup() {
   IMU.setSrd(19);                                     // setting SRD to 19 for a 50 Hz update rate
 
   // BMP280 setup
-  Serial.println(F("BMP280 test"));
-  //initializing BMP280 with I²C alternate address
-  if (!bmp.begin(0x76)) {   
-    Serial.println(F("BMP280 initialization unsuccessful, check wiring!"));
-    while (1);
+  //initializing BMP280 with I²C alternate address 0x76 instead of 0x77
+  BMP280Status = bmp.begin(0x76);       // start com with BMP280
+  if (BMP280Status < 1) {               // check BMP280 status
+    sDisp(F("BMP280 initialization unsuccessful, check wiring ! Status: "));
+    sDisp(BMP280Status);
   }else{
-    Serial.println(F("BMP280 initialization successful"));
+    sDisp(F("BMP280 initialization successful."));
   }
 
   /* Default settings from datasheet. */
@@ -72,6 +74,8 @@ void setup() {
                   Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
                   Adafruit_BMP280::FILTER_X16,      /* Filtering. */
                   Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
+
+  while (!Serial){}
 }
 
 //////////////////////
@@ -98,6 +102,10 @@ void loop() {
 //////////////////////
 // METHODS
 
+// serial display methods
+void sDisp(String str){if(debug){Serial.println(str);}}
+void sDisp(int str){if(debug){Serial.println(str);}}
+
 // SERVO MANIPULATION
 void move_latch(int pos){
   latchServo.write(pos);            // set latch to open 
@@ -118,18 +126,18 @@ void set_open_latch_pos(){
     String inStr = Serial.readString();             // reading input from serial port
     if(inStr.equals("op\n")){
       openLatchPos += 10;
-      Serial.print("setting opened course to " );
-      Serial.print(openLatchPos);
+      sDisp("setting opened course to " );
+      sDisp(openLatchPos);
     }else if(inStr.equals("om\n")){
       openLatchPos -= 10;
-      Serial.print("setting opened course to ");
-      Serial.print(openLatchPos);
+      sDisp("setting opened course to ");
+      sDisp(openLatchPos);
     }else{
-      Serial.print("input error [");
-      Serial.print(inStr);
-      Serial.print("]");
+      sDisp("input error [");
+      sDisp(inStr);
+      sDisp("]");
     }
-    Serial.print("\n");
+    sDisp("\n");
   }
   move_latch(openLatchPos);                           // moves the latch to setted position
 }
@@ -145,18 +153,18 @@ void set_closed_latch_pos(){
     String inStr = Serial.readString();
     if(inStr == "cp\n"){
       closedLatchPos += 10;
-      Serial.print("setting closed course to ");
-      Serial.print(closedLatchPos);
+      sDisp("setting closed course to ");
+      sDisp(closedLatchPos);
     }else if(inStr.equals("cm\n")){
       closedLatchPos -= 10;
-      Serial.print("setting closed course to ");
-      Serial.print(closedLatchPos);
+      sDisp("setting closed course to ");
+      sDisp(closedLatchPos);
     }else{
-      Serial.print("input error [");
-      Serial.print(inStr);
-      Serial.print("]");
+      sDisp("input error [");
+      sDisp(inStr);
+      sDisp("]");
     }
-    Serial.print("\n");
+    sDisp("\n");
   }
   move_latch(closedLatchPos);                         // moves the latch to setted position
 }
@@ -164,47 +172,51 @@ void set_closed_latch_pos(){
 void display_gy91_data(){
   IMU.readSensor();       // read the sensor
 
-//  display the data
-//  Serial.print(IMU.getAccelX_mss(),6);
+//  display MPU9250 data
+//  Serial.print(F("Acc_XYZ "));
+  Serial.print(IMU.getAccelX_mss(),6);
 //  Serial.print("\t");
 //  Serial.print(IMU.getAccelY_mss(),6);
 //  Serial.print("\t");
 //  Serial.print(IMU.getAccelZ_mss(),6);
 //  Serial.print("\t");
+//
+//  Serial.print(F("Gyro_XYZ "));
 //  Serial.print(IMU.getGyroX_rads(),6);
 //  Serial.print("\t");
 //  Serial.print(IMU.getGyroY_rads(),6);
 //  Serial.print("\t");
 //  Serial.print(IMU.getGyroZ_rads(),6);
 //  Serial.print("\t");
+//
+//  Serial.print(F("Mag_XYZ "));
 //  Serial.print(IMU.getMagX_uT(),6);
 //  Serial.print("\t");
 //  Serial.print(IMU.getMagY_uT(),6);
 //  Serial.print("\t");
 //  Serial.print(IMU.getMagZ_uT(),6);
-//  Serial.print("\t");
-  Serial.print(IMU.getTemperature_C(),6);
-//  Serial.print(F("Temperature = "));
+//  Serial.print("\t");  
+//  Serial.print(IMU.getTemperature_C(),6);
+//  Serial.print(F("\t"));
 
-  // BMP280
-  Serial.print(bmp.readTemperature());
-//  Serial.println(" *C");
-  Serial.print(F("\t"));
+  // BMP280L
+//  Serial.print(F("Temp(°C)\t "));
+//  Serial.print(bmp.readTemperature());
+//  Serial.print(F("\t"));
 
-  Serial.print(F("Pressure = "));
-  Serial.print(bmp.readPressure());
-//  Serial.println(" Pa");
-  Serial.print(F("\t"));
-
-//  Serial.print(F("Approx altitude = "));
-  Serial.print((bmp.readAltitude(1034))); /* Adjusted to local forecast! */
-  Serial.println(" m");
+//  Serial.print(F("=Pressure(Pa) "));
+//  Serial.print(bmp.readPressure());
+//  Serial.print(F("\t"));
+//
+//  Serial.print(F("=Approx_alt(m) "));
+//  Serial.print((bmp.readAltitude(1034))); /* Adjusted to local forecast! */
   Serial.print(F("\n"));
 }
 
 // FLIGHT PHASES
 void preflight(){
   set_open_latch_pos();
+  display_gy91_data();
   if( digitalRead(armButtonPin) == HIGH && 
       digitalRead(launchDetectorPin) == HIGH
      ){
