@@ -175,41 +175,42 @@ void display_gy91_data(){
 //  display MPU9250 data
 //  Serial.print(F("Acc_XYZ "));
   Serial.print(IMU.getAccelX_mss(),6);
-//  Serial.print("\t");
-//  Serial.print(IMU.getAccelY_mss(),6);
-//  Serial.print("\t");
-//  Serial.print(IMU.getAccelZ_mss(),6);
-//  Serial.print("\t");
-//
+  Serial.print("\t");
+  Serial.print(IMU.getAccelY_mss(),6);
+  Serial.print("\t");
+  Serial.print(IMU.getAccelZ_mss(),6);
+  Serial.print("\t");
+
 //  Serial.print(F("Gyro_XYZ "));
-//  Serial.print(IMU.getGyroX_rads(),6);
-//  Serial.print("\t");
-//  Serial.print(IMU.getGyroY_rads(),6);
-//  Serial.print("\t");
-//  Serial.print(IMU.getGyroZ_rads(),6);
-//  Serial.print("\t");
-//
+  Serial.print(IMU.getGyroX_rads(),6);
+  Serial.print("\t");
+  Serial.print(IMU.getGyroY_rads(),6);
+  Serial.print("\t");
+  Serial.print(IMU.getGyroZ_rads(),6);
+  Serial.print("\t");
+
 //  Serial.print(F("Mag_XYZ "));
-//  Serial.print(IMU.getMagX_uT(),6);
-//  Serial.print("\t");
-//  Serial.print(IMU.getMagY_uT(),6);
-//  Serial.print("\t");
-//  Serial.print(IMU.getMagZ_uT(),6);
-//  Serial.print("\t");  
-//  Serial.print(IMU.getTemperature_C(),6);
-//  Serial.print(F("\t"));
+  Serial.print(IMU.getMagX_uT(),6);
+  Serial.print("\t");
+  Serial.print(IMU.getMagY_uT(),6);
+  Serial.print("\t");
+  Serial.print(IMU.getMagZ_uT(),6);
+  Serial.print("\t");  
+  Serial.print(IMU.getTemperature_C(),6);
+  Serial.print(F("\t"));
 
   // BMP280L
 //  Serial.print(F("Temp(°C)\t "));
-//  Serial.print(bmp.readTemperature());
+  Serial.print(bmp.readTemperature());
 //  Serial.print(F("\t"));
 
 //  Serial.print(F("=Pressure(Pa) "));
-//  Serial.print(bmp.readPressure());
-//  Serial.print(F("\t"));
+  Serial.print(bmp.readPressure());
+  Serial.print(F("\t"));
 //
 //  Serial.print(F("=Approx_alt(m) "));
-//  Serial.print((bmp.readAltitude(1034))); /* Adjusted to local forecast! */
+  Serial.print((bmp.readAltitude(1034))); /* Adjusted to local forecast! */
+  
   Serial.print(F("\n"));
 }
 
