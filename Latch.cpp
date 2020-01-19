@@ -2,8 +2,8 @@
  * 
  */
 #include "Arduino.h"
-#include <Servo.h>
 #include "Latch.h"
+
 
 //////////////////////
 // constructor

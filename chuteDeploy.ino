@@ -6,35 +6,38 @@
   - Adafruit_BMP280_Library      modified bmp280 IÂ²C address for alternate one
   - Advanced_I2C.ino     Brian R Taylor      brian.taylor@bolderflight.com
 */
-
-//#include <Servo.h>
+#include "Arduino.h"
 #include "MPU9250.h"
 #include <Wire.h>
 #include <Adafruit_BMP280.h>
 #include "Latch.h"
+#include "Cli.h"
 
-
-Latch latch;                            // create Latch object to control the latch servo
 MPU9250 IMU(Wire, 0x68);                // an MPU9250 object with the MPU-9250 sensor on I2C bus 0 with address 0x68
 Adafruit_BMP280 bmp;                    // BMP280 from adafruit
+Cli cli;
+
+Latch latch;                            // create Latch object to control the latch servo
+const int latchPin = 5;                 // the number of the latch's servo signal pin
+const int latchOpenPos = 2;                  // variable for open latch position setting
+const int latchClosedPos = 90;               // variable for closed latch position setting
 
 const bool debug = true;
-const bool displayFlightStats = false;
+const bool displayFlightStats = true;
 
 const int armButtonPin = 2;             // the number of the arm pushbutton pin
 const int launchDetectorPin = 3;        // the number of the launch detector pin
 const int tiltButtonPin = 4;            // the number of the tilt button pin
-const int latchServoPin = 5;            // the number of the latch's servo signal pin
 const int inFlightLedPin = 6;           // the number of the in flight state led's pin
 const int armedLedPin = LED_BUILTIN;    // the number of the armed state led's pin
 
-int openLatchPos = 2;                  // variable for open latch position setting
-int closedLatchPos = 90;               // variable for closed latch position setting
 int flightPhase = 0;                   // variable to track flight phases
 int IMUstatus;                         // tracks IMU's state
 int BMP280Status;                      // tracks BMP280's state
-int qnh = 1013;                        // QNH
+
 float rawVal[50];                      // raw altitudes to smoothen
+
+int qnh = 1013;                        // QNH
 int lastMs;                            // keep track of the last loop for the variometer
 float lastAlt;
 float aprxAlt;
@@ -52,10 +55,13 @@ void setup() {
   pinMode(armButtonPin, INPUT_PULLUP);
   pinMode(launchDetectorPin, INPUT_PULLUP);
 
-  // Servo setup
-  latch.init(latchServoPin, openLatchPos, closedLatchPos); // attaches the servo on pin 9 to the servo object
+  // Cli setup
+  cli.init(latch, qnh);
+  
+  // Latch setup
+  latch.init(latchPin, latchOpenPos, latchClosedPos); // attaches the servo on pin 9 to the servo object
   latch.openLatch();                     // puts the servo in the opened position
-
+  
   // MPU9250 setup
   IMUstatus = IMU.begin();             // start communication with IMU
   if (IMUstatus < 1) {                 // check IMU status
@@ -79,14 +85,13 @@ void setup() {
     sDisp(F("BMP280 initialization successful."));
   }
 
-  /* Default settings from datasheet. */
   bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,     /* Operating Mode. */
                   Adafruit_BMP280::SAMPLING_X16,     /* Temp. oversampling */
                   Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
                   Adafruit_BMP280::FILTER_X16,      /* Filtering. */
                   //                  Adafruit_BMP280::STANDBY_MS_500   /* Standby time. */
 //                                    Adafruit_BMP280::STANDBY_MS_125
-                  Adafruit_BMP280::STANDBY_MS_1
+                  Adafruit_BMP280::STANDBY_MS_500
                  );
 
   while (!Serial) {}
@@ -117,86 +122,12 @@ void loop() {
 //////////////////////
 // METHODS
 
-// serial display methods
-void sDisp(String str) {
-  if (debug) {
-    Serial.println(str);
-  }
-}
-void sDisp(int str) {
-  if (debug) {
-    Serial.println(str);
-  }
-}
 
-// Commands interface
-void read_command() {
-  if (Serial.available()) {
-    String inStr = Serial.readString();           // reading input from serial port
-    if (inStr.startsWith("qnh")) {             // looking for QNH command
-      setQnh(inStr);
-    } else if (inStr.startsWith("o")) {           // looking for open position command
-      set_open_latch_pos(inStr);
-    } else if (inStr.startsWith("c")) {           // looking for closed position command
-      set_closed_latch_pos(inStr);
-    }
-  }
-
-}
-
-void setQnh(String inStr){
-   if (inStr.startsWith("qnh")) {             // looking for QNH command
-      qnh = inStr.substring(3, 7).toInt();
-      maxAlt = aprxAlt ;
-      minAlt = aprxAlt ;
-      sDisp("setting qnh to " + String(qnh));
-   }
-}
-/**
-   op adds 10 to the openLatch var
-   om removes 10 from the openLatch var
-*/
-void set_open_latch_pos(String inStr) {
-  if (flightPhase == 0) {
-    if (inStr.equals("op\n")) {
-      latch.setOpenPos(latch.getOpenPos() + 5);
-      sDisp("setting opened course to " + String(latch.getOpenPos()));
-    } else if (inStr.equals("om\n")) {
-      latch.setOpenPos(latch.getOpenPos() - 5);
-      sDisp("setting opened course to " + String(latch.getOpenPos()));
-    } else {
-      sDisp("input error [" + String(inStr) + "]");
-    }
-    latch.openLatch();                           // moves the latch to setted position
-  } else {
-    sDisp("input error : not in preflight");
-  }
-}
-
-/**
-   op adds 10 to the openLatch var
-   om removes 10 from the openLatch var
-*/
-void set_closed_latch_pos(String inStr) {
-  if (flightPhase == 1 ) {
-    if (inStr == "cp\n") {
-      closedLatchPos += 5;
-      sDisp("setting closed course to " + String(closedLatchPos));
-    } else if (inStr.equals("cm\n")) {
-      closedLatchPos -= 5;
-      sDisp("setting closed course to " + String(closedLatchPos));
-    } else {
-      sDisp("input error [" + String(inStr) + "]");
-    }
-    latch.closeLatch();                         // moves the latch to setted position
-  } else {
-    sDisp("input error : not armed");
-  }
-}
 
 // FLIGHT PHASES
 void preflight() {
-  read_command();
+  cli.readCommand();
+  //read_command();
   if ( digitalRead(armButtonPin) == LOW &&
        digitalRead(launchDetectorPin) == LOW
      ) {
@@ -208,7 +139,8 @@ void preflight() {
 }
 
 void ready_to_launch() {
-  read_command();
+  cli.readCommand();
+  //read_command();
   if (digitalRead(launchDetectorPin) == HIGH) {
     digitalWrite(inFlightLedPin, HIGH);
     digitalWrite(armedLedPin, LOW);
@@ -226,6 +158,19 @@ void in_flight() {
     sDisp(F("To phase 3"));
   }
 }
+
+// serial display methods
+void sDisp(String str) {
+  if (debug) {
+    Serial.println(str);
+  }
+}
+void sDisp(int str) {
+  if (debug) {
+    Serial.println(str);
+  }
+}
+
 
 // sensors data handling
 void display_gy91_data() {
@@ -280,12 +225,10 @@ void display_gy91_data() {
       //    int lastMs;                            // keep track of the last loop for the variometer
     }
 
+
+
     // computed
-    if (true) {
-
-
-
-      
+    if (true) {   
       // roll
       //      Serial.print(atan2(IMU.getAccelX_mss() , IMU.getAccelZ_mss()));
       //      Serial.print(F("\t"));
