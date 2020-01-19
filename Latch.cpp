@@ -2,31 +2,52 @@
  * 
  */
 #include "Arduino.h"
+#include <Servo.h>
 #include "Latch.h"
 
-Latch::Latch(int pin)
-{
-  _pin = pin;
+//////////////////////
+// constructor
+
+Latch::Latch(){}
+
+//////////////////////
+// methods
+void Latch::init(int pin, int openPos, int closedPos){
   pinMode(pin, OUTPUT);
+  _pin = pin;
+  _openPos = openPos;
+  _closedPos = closedPos;
+  _servo.attach(_pin);
 }
 
-void setOpenPos(int pos){
-  _openPos = pos;
-}
-
-void setClosedPos(int pos){
-  _closedPos = pos;
-}
-
-void move_latch(int pos) {
-  latchServo.write(pos);            // set latch to open
+void Latch::_moveLatch(int pos) {
+  _servo.write(pos);            // set latch to open
   delay(15);                        // waits for the servo to get there
 }
 
-void open_latch() {
-  move_latch(openLatchPos);
+void Latch::openLatch() {
+  _moveLatch(_openPos);
 }
 
-void close_latch() {
-  move_latch(closedLatchPos);
+void Latch::closeLatch() {
+  _moveLatch(_closedPos);
+}
+
+//////////////////////
+// getters/setters
+
+int Latch::getOpenPos(){
+  return _openPos;
+}
+
+void Latch::setOpenPos(int pos){
+  _openPos = pos;
+}
+
+int Latch::getClosedPos(){
+  return _closedPos;
+}
+
+void Latch::setClosedPos(int pos){
+  _closedPos = pos;
 }

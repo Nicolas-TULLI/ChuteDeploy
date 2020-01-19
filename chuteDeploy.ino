@@ -3,22 +3,23 @@
 
   sources
   - available aduino examples
-  - Adafruit_BMP280_Library      modified bmp280 I²C address for alternate one
+  - Adafruit_BMP280_Library      modified bmp280 IÂ²C address for alternate one
   - Advanced_I2C.ino     Brian R Taylor      brian.taylor@bolderflight.com
 */
 
-#include <Servo.h>
+//#include <Servo.h>
 #include "MPU9250.h"
 #include <Wire.h>
 #include <Adafruit_BMP280.h>
+#include "Latch.h"
 
 
-Servo latchServo;                       // create servo object to control the latch servo
+Latch latch;                            // create Latch object to control the latch servo
 MPU9250 IMU(Wire, 0x68);                // an MPU9250 object with the MPU-9250 sensor on I2C bus 0 with address 0x68
 Adafruit_BMP280 bmp;                    // BMP280 from adafruit
 
 const bool debug = true;
-const bool displayFlightStats = true;
+const bool displayFlightStats = false;
 
 const int armButtonPin = 2;             // the number of the arm pushbutton pin
 const int launchDetectorPin = 3;        // the number of the launch detector pin
@@ -27,7 +28,7 @@ const int latchServoPin = 5;            // the number of the latch's servo signa
 const int inFlightLedPin = 6;           // the number of the in flight state led's pin
 const int armedLedPin = LED_BUILTIN;    // the number of the armed state led's pin
 
-int openLatchPos = 1;                  // variable for open latch position setting
+int openLatchPos = 2;                  // variable for open latch position setting
 int closedLatchPos = 90;               // variable for closed latch position setting
 int flightPhase = 0;                   // variable to track flight phases
 int IMUstatus;                         // tracks IMU's state
@@ -52,8 +53,8 @@ void setup() {
   pinMode(launchDetectorPin, INPUT_PULLUP);
 
   // Servo setup
-  latchServo.attach(latchServoPin); // attaches the servo on pin 9 to the servo object
-  open_latch();                     // puts the servo in the opened position
+  latch.init(latchServoPin, openLatchPos, closedLatchPos); // attaches the servo on pin 9 to the servo object
+  latch.openLatch();                     // puts the servo in the opened position
 
   // MPU9250 setup
   IMUstatus = IMU.begin();             // start communication with IMU
@@ -69,7 +70,7 @@ void setup() {
   IMU.setSrd(19);                                     // setting SRD to 19 for a 50 Hz update rate
 
   // BMP280 setup
-  //initializing BMP280 with I²C alternate address 0x76 instead of 0x77
+  //initializing BMP280 with IÂ²C alternate address 0x76 instead of 0x77
   BMP280Status = bmp.begin(0x76);       // start com with BMP280
   if (BMP280Status < 1) {               // check BMP280 status
     sDisp(F("BMP280 initialization unsuccessful, check wiring ! Status: "));
@@ -128,20 +129,6 @@ void sDisp(int str) {
   }
 }
 
-// SERVO MANIPULATION
-void move_latch(int pos) {
-  latchServo.write(pos);            // set latch to open
-  delay(15);                        // waits for the servo to get there
-}
-
-void open_latch() {
-  move_latch(openLatchPos);
-}
-
-void close_latch() {
-  move_latch(closedLatchPos);
-}
-
 // Commands interface
 void read_command() {
   if (Serial.available()) {
@@ -172,19 +159,15 @@ void setQnh(String inStr){
 void set_open_latch_pos(String inStr) {
   if (flightPhase == 0) {
     if (inStr.equals("op\n")) {
-      openLatchPos += 10;
-      sDisp("setting opened course to " );
-      sDisp(openLatchPos);
+      latch.setOpenPos(latch.getOpenPos() + 5);
+      sDisp("setting opened course to " + String(latch.getOpenPos()));
     } else if (inStr.equals("om\n")) {
-      openLatchPos -= 10;
-      sDisp("setting opened course to ");
-      sDisp(openLatchPos);
+      latch.setOpenPos(latch.getOpenPos() - 5);
+      sDisp("setting opened course to " + String(latch.getOpenPos()));
     } else {
-      sDisp("input error [");
-      sDisp(inStr);
-      sDisp("]");
+      sDisp("input error [" + String(inStr) + "]");
     }
-    move_latch(openLatchPos);                           // moves the latch to setted position
+    latch.openLatch();                           // moves the latch to setted position
   } else {
     sDisp("input error : not in preflight");
   }
@@ -197,19 +180,15 @@ void set_open_latch_pos(String inStr) {
 void set_closed_latch_pos(String inStr) {
   if (flightPhase == 1 ) {
     if (inStr == "cp\n") {
-      closedLatchPos += 10;
-      sDisp("setting closed course to ");
-      sDisp(closedLatchPos);
+      closedLatchPos += 5;
+      sDisp("setting closed course to " + String(closedLatchPos));
     } else if (inStr.equals("cm\n")) {
-      closedLatchPos -= 10;
-      sDisp("setting closed course to ");
-      sDisp(closedLatchPos);
+      closedLatchPos -= 5;
+      sDisp("setting closed course to " + String(closedLatchPos));
     } else {
-      sDisp("input error [");
-      sDisp(inStr);
-      sDisp("]");
+      sDisp("input error [" + String(inStr) + "]");
     }
-    move_latch(closedLatchPos);                         // moves the latch to setted position
+    latch.closeLatch();                         // moves the latch to setted position
   } else {
     sDisp("input error : not armed");
   }
@@ -221,7 +200,7 @@ void preflight() {
   if ( digitalRead(armButtonPin) == LOW &&
        digitalRead(launchDetectorPin) == LOW
      ) {
-    close_latch();
+    latch.closeLatch();
     digitalWrite(armedLedPin, HIGH);
     flightPhase = 1;
     sDisp(F("To phase 1"));
@@ -240,7 +219,7 @@ void ready_to_launch() {
 
 void in_flight() {
   if (digitalRead(tiltButtonPin) == HIGH) {
-    open_latch();
+   latch.openLatch();
     digitalWrite(armedLedPin, LOW);
     digitalWrite(inFlightLedPin, LOW);
     flightPhase = 3;
@@ -287,7 +266,7 @@ void display_gy91_data() {
 
     // BMP280L
     if (false) {
-      //      Serial.print(F("Temp(°C)\t "));
+      //      Serial.print(F("Temp(Â°C)\t "));
       Serial.print(bmp.readTemperature(), 6);
       Serial.print(F("\t"));
 
@@ -318,6 +297,7 @@ void display_gy91_data() {
       aprxAlt = bmp.readAltitude(qnh);
       int now = millis();
       Serial.print(String(((aprxAlt - lastAlt) / (now - lastMs))*1000) + F("\t"));
+      Serial.print(String(now - lastMs) + F("\t"));
       lastAlt = aprxAlt;
       lastMs = now;
       
