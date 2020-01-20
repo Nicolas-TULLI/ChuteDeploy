@@ -3,16 +3,17 @@
 
 #include "Arduino.h"
 #include "Latch.h"
+#include "FlightDatas.h"
 
 class Cli
 {
   public:
     Cli::Cli();
     void readCommand();
-    void init(Latch &latch, int &qnh);
+    void init(Latch &latch, FlightDatas &fds);
   private:
     Latch *_latch;
-    int *_qnh;
+    FlightDatas *_fds;
     void _setQnh(String in);
     void _setLatchOpenPos(String in);
     void _setLatchClosedPos(String in);

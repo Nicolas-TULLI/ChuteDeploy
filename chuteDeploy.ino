@@ -12,18 +12,22 @@
 #include <Adafruit_BMP280.h>
 #include "Latch.h"
 #include "Cli.h"
+#include "FlightDatas.h"
+#include "Smoother.h"
 
 MPU9250 IMU(Wire, 0x68);                // an MPU9250 object with the MPU-9250 sensor on I2C bus 0 with address 0x68
 Adafruit_BMP280 bmp;                    // BMP280 from adafruit
 Cli cli;
+FlightDatas fds;
+
 
 Latch latch;                            // create Latch object to control the latch servo
 const int latchPin = 5;                 // the number of the latch's servo signal pin
-const int latchOpenPos = 2;                  // variable for open latch position setting
-const int latchClosedPos = 90;               // variable for closed latch position setting
+const int latchOpenPos = 3;             // variable for open latch position setting
+const int latchClosedPos = 90;          // variable for closed latch position setting
 
 const bool debug = true;
-const bool displayFlightStats = true;
+const bool doDisplayGy91Data = false;
 
 const int armButtonPin = 2;             // the number of the arm pushbutton pin
 const int launchDetectorPin = 3;        // the number of the launch detector pin
@@ -31,27 +35,9 @@ const int tiltButtonPin = 4;            // the number of the tilt button pin
 const int inFlightLedPin = 6;           // the number of the in flight state led's pin
 const int armedLedPin = LED_BUILTIN;    // the number of the armed state led's pin
 
-int flightPhase = 0;                   // variable to track flight phases
 int IMUstatus;                         // tracks IMU's state
 int BMP280Status;                      // tracks BMP280's state
 
-float rawVal[50];                      // raw altitudes to smoothen
-
-struct FlightDatas{
-  int qnh = 1013;                        // QNH
-  int lastMs;                            // keep track of the last loop for the variometer
-  float lastAlt;
-  float aprxAlt;
-  float maxAlt;
-  float minAlt;
-};
-
-FlightDatas fds;
-
-
-//struct fdt {
-//  int qnh = 1013;                        // QNH
-//};
 
 //////////////////////
 // SETUP
@@ -65,7 +51,7 @@ void setup() {
   pinMode(launchDetectorPin, INPUT_PULLUP);
 
   // Cli setup
-  cli.init(latch, fds.qnh);
+  cli.init(latch, fds);
   
   // Latch setup
   latch.init(latchPin, latchOpenPos, latchClosedPos); // attaches the servo on pin 9 to the servo object
@@ -100,7 +86,7 @@ void setup() {
                   Adafruit_BMP280::FILTER_X16,      /* Filtering. */
                   //                  Adafruit_BMP280::STANDBY_MS_500   /* Standby time. */
 //                                    Adafruit_BMP280::STANDBY_MS_125
-                  Adafruit_BMP280::STANDBY_MS_500
+                  Adafruit_BMP280::STANDBY_MS_1
                  );
 
   while (!Serial) {}
@@ -113,8 +99,13 @@ void loop() {
   /* execute the current flight phase methods
       each method is responsible of switching to the next
   */
-  display_gy91_data();
-  switch (flightPhase) {
+  
+  fds.setAlt(bmp.readAltitude(fds.getQnh()));
+  
+  debugAltimeter();
+//  display_gy91_data();
+  
+  switch (fds.flightPhase) {
     case 0: preflight();
       break;
     case 1: ready_to_launch();
@@ -141,7 +132,7 @@ void preflight() {
      ) {
     latch.closeLatch();
     digitalWrite(armedLedPin, HIGH);
-    flightPhase = 1;
+    fds.flightPhase = 1;
     sDisp(F("To phase 1"));
   }
 }
@@ -151,7 +142,7 @@ void ready_to_launch() {
   if (digitalRead(launchDetectorPin) == HIGH) {
     digitalWrite(inFlightLedPin, HIGH);
     digitalWrite(armedLedPin, LOW);
-    flightPhase = 2;
+    fds.flightPhase = 2;
     sDisp(F("To phase 2"));
   }
 }
@@ -161,7 +152,7 @@ void in_flight() {
    latch.openLatch();
     digitalWrite(armedLedPin, LOW);
     digitalWrite(inFlightLedPin, LOW);
-    flightPhase = 3;
+    fds.flightPhase = 3;
     sDisp(F("To phase 3"));
   }
 }
@@ -178,14 +169,33 @@ void sDisp(int str) {
   }
 }
 
+void debugAltimeter(){
+  if (true) {   
+  //      Serial.print(String(sm1.smooth(((fds.aprxAlt - fds.lastAlt) / (now - fds.lastMs))*1000)) + F("\t"));
+  //      Serial.print(String(((fds.aprxAlt - fds.lastAlt) / (now - fds.lastMs))*1000) + F("\t"));
+  //      Serial.print(String(now - fds.lastMs) + F("\t"));
+  //      fds.lastAlt = fds.aprxAlt;
+  //      fds.lastMs = now;
+  
+//    Serial.print(String(fds.getAlt()) + F("\t")); /* Adjusted to local forecast! */
+//    Serial.print(String(fds.getSmoothedAlt()) + F("\t"));
+//    Serial.print(String(fds.getMaxAlt()) + F("\t"));
+//    Serial.print(String(fds.getMinAlt()) + F("\t"));
+//    Serial.print(String(fds.vario()) + F("\t"));
+    Serial.print(String(fds.smVario()) + F("\t"));
+    Serial.print(String(fds.getLoopTime()) + F("\t"));
+    Serial.print(F("\n"));
+  }
+}
+  
 
 // sensors data handling
 void display_gy91_data() {
-  if (displayFlightStats) {
-//    IMU.readSensor();       // read the sensor
+  if (doDisplayGy91Data) {
+    IMU.readSensor();       // read the sensor
 
     //  display MPU9250 data
-    if (false) {
+    if (true) {
       //    Serial.print(F("Acc_XYZ "));
       Serial.print(IMU.getAccelX_mss(), 6);
       Serial.print("\t");
@@ -194,7 +204,7 @@ void display_gy91_data() {
       Serial.print(IMU.getAccelZ_mss(), 6);
       Serial.print("\t");
     }
-    if (false) {
+    if (true) {
       //    Serial.print(F("Gyro_XYZ "));
       Serial.print(IMU.getGyroX_rads(), 6);
       Serial.print("\t");
@@ -203,7 +213,7 @@ void display_gy91_data() {
       Serial.print(IMU.getGyroZ_rads(), 6);
       Serial.print("\t");
     }
-    if (false) {
+    if (true) {
       //    Serial.print(F("Mag_XYZ "));
       Serial.print(IMU.getMagX_uT(), 6);
       Serial.print("\t");
@@ -217,7 +227,7 @@ void display_gy91_data() {
     }
 
     // BMP280L
-    if (false) {
+    if (true) {
       //      Serial.print(F("Temp(Â°C)\t "));
       Serial.print(bmp.readTemperature(), 6);
       Serial.print(F("\t"));
@@ -226,53 +236,23 @@ void display_gy91_data() {
       Serial.print(bmp.readPressure(), 6);
       Serial.print(F("\t"));
       //      Serial.print(F("=Approx_alt(m) "));
-      Serial.print(bmp.readAltitude(fds.qnh), 6); /* Adjusted to local forecast! */
+      Serial.print(bmp.readAltitude(fds.getQnh()), 6); /* Adjusted to local forecast! */
      
       Serial.print(F("\t"));
       //    int lastMs;                            // keep track of the last loop for the variometer
     }
 
-
-
-    // computed
-    if (true) {   
+    // compute horizon
+    if (false){
       // roll
-      //      Serial.print(atan2(IMU.getAccelX_mss() , IMU.getAccelZ_mss()));
-      //      Serial.print(F("\t"));
+      Serial.print(atan2(IMU.getAccelX_mss() , IMU.getAccelZ_mss()));
+      Serial.print(F("\t"));
       // pitch
-      //      Serial.print(atan2(IMU.getAccelY_mss() , IMU.getAccelZ_mss()));
-      //      Serial.print(F("\t"));
-      //      Serial.print((bmp.readAltitude(fds.qnh)), 6); /* Adjusted to local forecast! */
-      //      Serial.print(F("\t"));
-      fds.aprxAlt = bmp.readAltitude(fds.qnh);
-      int now = millis();
-      Serial.print(String(((fds.aprxAlt - fds.lastAlt) / (now - fds.lastMs))*1000) + F("\t"));
-      Serial.print(String(now - fds.lastMs) + F("\t"));
-      fds.lastAlt = fds.aprxAlt;
-      fds.lastMs = now;
-      
-      fds.maxAlt >= fds.aprxAlt ? : fds.maxAlt = fds.aprxAlt;
-      fds.minAlt <= fds.aprxAlt ? : fds.minAlt = fds.aprxAlt;
-      
-      Serial.print(String(fds.maxAlt) + F("\t"));
-      Serial.print(String(fds.minAlt) + F("\t"));
-      Serial.print(String(fds.aprxAlt) + F("\t")); /* Adjusted to local forecast! */
-      Serial.print(String(smooth(fds.aprxAlt)) + F("\t"));
+      Serial.print(atan2(IMU.getAccelY_mss() , IMU.getAccelZ_mss()));
+      Serial.print(F("\t"));
+      Serial.print((bmp.readAltitude(fds.getQnh())), 6); /* Adjusted to local forecast! */
+      Serial.print(F("\t"));
     }
     Serial.print(F("\n"));
   }
-}
-
-float smooth(float val) {
-  float sum = 0;
-  // shifting array one element down and adding last val on top
-  for (int i = sizeof(rawVal) / sizeof(rawVal[0]) - 1 ; i > 0 ; i--) {
-    rawVal[i] = rawVal[i - 1];
-  }
-  rawVal[0] = val;
-  // summing up the array and averaging it
-  for (int i = sizeof(rawVal) / sizeof(rawVal[0]) - 1 ; i > -1 ; i--) {
-    sum += rawVal[i];
-  }
-  return sum / (sizeof(rawVal) / sizeof(rawVal[0]));
 }
