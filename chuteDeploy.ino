@@ -37,12 +37,17 @@ int BMP280Status;                      // tracks BMP280's state
 
 float rawVal[50];                      // raw altitudes to smoothen
 
-int qnh = 1013;                        // QNH
-int lastMs;                            // keep track of the last loop for the variometer
-float lastAlt;
-float aprxAlt;
-float maxAlt;
-float minAlt;
+struct FlightDatas{
+  int qnh = 1013;                        // QNH
+  int lastMs;                            // keep track of the last loop for the variometer
+  float lastAlt;
+  float aprxAlt;
+  float maxAlt;
+  float minAlt;
+};
+
+FlightDatas fds;
+
 
 //struct fdt {
 //  int qnh = 1013;                        // QNH
@@ -60,7 +65,7 @@ void setup() {
   pinMode(launchDetectorPin, INPUT_PULLUP);
 
   // Cli setup
-  cli.init(latch, qnh);
+  cli.init(latch, fds.qnh);
   
   // Latch setup
   latch.init(latchPin, latchOpenPos, latchClosedPos); // attaches the servo on pin 9 to the servo object
@@ -131,7 +136,6 @@ void loop() {
 // FLIGHT PHASES
 void preflight() {
   cli.readCommand();
-  //read_command();
   if ( digitalRead(armButtonPin) == LOW &&
        digitalRead(launchDetectorPin) == LOW
      ) {
@@ -144,7 +148,6 @@ void preflight() {
 
 void ready_to_launch() {
   cli.readCommand();
-  //read_command();
   if (digitalRead(launchDetectorPin) == HIGH) {
     digitalWrite(inFlightLedPin, HIGH);
     digitalWrite(armedLedPin, LOW);
@@ -223,7 +226,7 @@ void display_gy91_data() {
       Serial.print(bmp.readPressure(), 6);
       Serial.print(F("\t"));
       //      Serial.print(F("=Approx_alt(m) "));
-      Serial.print(bmp.readAltitude(qnh), 6); /* Adjusted to local forecast! */
+      Serial.print(bmp.readAltitude(fds.qnh), 6); /* Adjusted to local forecast! */
      
       Serial.print(F("\t"));
       //    int lastMs;                            // keep track of the last loop for the variometer
@@ -239,22 +242,22 @@ void display_gy91_data() {
       // pitch
       //      Serial.print(atan2(IMU.getAccelY_mss() , IMU.getAccelZ_mss()));
       //      Serial.print(F("\t"));
-      //      Serial.print((bmp.readAltitude(qnh)), 6); /* Adjusted to local forecast! */
+      //      Serial.print((bmp.readAltitude(fds.qnh)), 6); /* Adjusted to local forecast! */
       //      Serial.print(F("\t"));
-      aprxAlt = bmp.readAltitude(qnh);
+      fds.aprxAlt = bmp.readAltitude(fds.qnh);
       int now = millis();
-      Serial.print(String(((aprxAlt - lastAlt) / (now - lastMs))*1000) + F("\t"));
-      Serial.print(String(now - lastMs) + F("\t"));
-      lastAlt = aprxAlt;
-      lastMs = now;
+      Serial.print(String(((fds.aprxAlt - fds.lastAlt) / (now - fds.lastMs))*1000) + F("\t"));
+      Serial.print(String(now - fds.lastMs) + F("\t"));
+      fds.lastAlt = fds.aprxAlt;
+      fds.lastMs = now;
       
-      maxAlt >= aprxAlt ? : maxAlt = aprxAlt;
-      minAlt <= aprxAlt ? : minAlt = aprxAlt;
+      fds.maxAlt >= fds.aprxAlt ? : fds.maxAlt = fds.aprxAlt;
+      fds.minAlt <= fds.aprxAlt ? : fds.minAlt = fds.aprxAlt;
       
-      Serial.print(String(maxAlt) + F("\t"));
-      Serial.print(String(minAlt) + F("\t"));
-      Serial.print(String(aprxAlt) + F("\t")); /* Adjusted to local forecast! */
-      Serial.print(String(smooth(aprxAlt)) + F("\t"));
+      Serial.print(String(fds.maxAlt) + F("\t"));
+      Serial.print(String(fds.minAlt) + F("\t"));
+      Serial.print(String(fds.aprxAlt) + F("\t")); /* Adjusted to local forecast! */
+      Serial.print(String(smooth(fds.aprxAlt)) + F("\t"));
     }
     Serial.print(F("\n"));
   }
