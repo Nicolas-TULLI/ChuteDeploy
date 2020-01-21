@@ -34,6 +34,7 @@ const int launchDetectorPin = 3;        // the number of the launch detector pin
 const int tiltButtonPin = 4;            // the number of the tilt button pin
 const int inFlightLedPin = 6;           // the number of the in flight state led's pin
 const int armedLedPin = LED_BUILTIN;    // the number of the armed state led's pin
+const int qnh = 1044;
 
 int IMUstatus;                         // tracks IMU's state
 int BMP280Status;                      // tracks BMP280's state
@@ -50,6 +51,8 @@ void setup() {
   pinMode(armButtonPin, INPUT_PULLUP);
   pinMode(launchDetectorPin, INPUT_PULLUP);
 
+  // setting qnh
+  fds.setQnh(qnh);
   // Cli setup
   cli.init(latch, fds);
   
@@ -88,8 +91,6 @@ void setup() {
 //                                    Adafruit_BMP280::STANDBY_MS_125
                   Adafruit_BMP280::STANDBY_MS_1
                  );
-
-  while (!Serial) {}
 }
 
 //////////////////////
@@ -103,7 +104,7 @@ void loop() {
   fds.setAlt(bmp.readAltitude(fds.getQnh()));
   
   debugAltimeter();
-//  display_gy91_data();
+  display_gy91_data();
   
   switch (fds.flightPhase) {
     case 0: preflight();
@@ -148,7 +149,8 @@ void ready_to_launch() {
 }
 
 void in_flight() {
-  if (digitalRead(tiltButtonPin) == HIGH) {
+  //if (digitalRead(tiltButtonPin) == HIGH) {
+  if(fds.isApogee()){
    latch.openLatch();
     digitalWrite(armedLedPin, LOW);
     digitalWrite(inFlightLedPin, LOW);
@@ -171,19 +173,16 @@ void sDisp(int str) {
 
 void debugAltimeter(){
   if (true) {   
-  //      Serial.print(String(sm1.smooth(((fds.aprxAlt - fds.lastAlt) / (now - fds.lastMs))*1000)) + F("\t"));
-  //      Serial.print(String(((fds.aprxAlt - fds.lastAlt) / (now - fds.lastMs))*1000) + F("\t"));
-  //      Serial.print(String(now - fds.lastMs) + F("\t"));
-  //      fds.lastAlt = fds.aprxAlt;
-  //      fds.lastMs = now;
-  
 //    Serial.print(String(fds.getAlt()) + F("\t")); /* Adjusted to local forecast! */
 //    Serial.print(String(fds.getSmoothedAlt()) + F("\t"));
 //    Serial.print(String(fds.getMaxAlt()) + F("\t"));
 //    Serial.print(String(fds.getMinAlt()) + F("\t"));
 //    Serial.print(String(fds.vario()) + F("\t"));
     Serial.print(String(fds.smVario()) + F("\t"));
-    Serial.print(String(fds.getLoopTime()) + F("\t"));
+    Serial.print(String(fds.getMaxVario()) + F("\t"));
+//    Serial.print(String(fds.getMinVario()) + F("\t"));
+//    Serial.print(String(fds.getLoopTime()) + F("\t"));
+//    Serial.print(String(fds.isApogee()) + F("\t"));
     Serial.print(F("\n"));
   }
 }
@@ -249,8 +248,6 @@ void display_gy91_data() {
       Serial.print(F("\t"));
       // pitch
       Serial.print(atan2(IMU.getAccelY_mss() , IMU.getAccelZ_mss()));
-      Serial.print(F("\t"));
-      Serial.print((bmp.readAltitude(fds.getQnh())), 6); /* Adjusted to local forecast! */
       Serial.print(F("\t"));
     }
     Serial.print(F("\n"));

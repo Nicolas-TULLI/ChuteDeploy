@@ -12,8 +12,6 @@ class Smoother
     float getSmVal();
   private:
     float _rawVals[50];           // set smoother resolution here
-//    int _resetCounter;
-//    float _resetVal;
 };
 
 #endif
