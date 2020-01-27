@@ -25,7 +25,7 @@ class FlightDatas
     
   private:
     Smoother _smAlt;
-    Smoother _smVario;
+//    Smoother _smVario;
     int _qnh = 1013;        // QNH
     int _lastMs;            // time elapsed since last loop for the variometer
     int _now;
