@@ -7,6 +7,7 @@
   - Advanced_I2C.ino     Brian R Taylor      brian.taylor@bolderflight.com    arduino examples
   - Datalogger.ino       by Tom Igoe                arduino examples
 */
+
 #include "Arduino.h"
 #include <Wire.h>
 #include <SPI.h>
@@ -22,6 +23,10 @@
 Adafruit_BMP280 bmp;                    // BMP280 from adafruit
 Cli cli;
 FlightDatas fds;
+
+File logFile;
+String logFileName = "aDATA";      // base name for flight data log file. 6 char max. will be "uppercased", truncated to 6 char and suffixed with "_[0-9]*"
+bool headed = false;
 
 Latch latch;                            // create Latch object to control the latch servo
 const int latchPin = 5;                 // the number of the latch's servo signal pin
@@ -55,32 +60,34 @@ void setup() {
 
   // setting qnh
   fds.setQnh(qnh);
-  
+
   // Latch setup
   latch.init(latchPin, latchOpenPos, latchClosedPos); // attaches the servo on pin 9 to the servo object
   latch.openLatch();                     // puts the servo in the opened position
 
   // Cli setup
   cli.init(latch, fds);
-  
-  // MPU9250 setup
-//  IMUstatus = IMU.begin();             // start communication with IMU
-//  if (IMUstatus < 1) {                 // check IMU status
-//    Serial.println(F("IMU initialization unsuccessful, check IMU wiring ! Status: "));
-//    Serial.println(IMUstatus);
-//  } else {
-//    Serial.println(F("IMU initialization successful."));
-//  }
-//  IMU.setAccelRange(MPU9250::ACCEL_RANGE_8G);         // setting the accelerometer full scale range to +/-8G
-//  IMU.setGyroRange(MPU9250::GYRO_RANGE_500DPS);       // setting the gyroscope full scale range to +/-500 deg/s
-//  IMU.setDlpfBandwidth(MPU9250::DLPF_BANDWIDTH_20HZ); // setting DLPF bandwidth to 20 Hz
-//  IMU.setSrd(19);                                     // setting SRD to 19 for a 50 Hz update rate
+
+  // SD card setup
+  Serial.print(F("Initializing SD card..."));
+  if (SD.begin(chipSelect)) {                        // see if the card is present and can be initialized
+    Serial.println(F(" Card initialized."));
+  } else {
+    Serial.println(F(" Card failed, or not present."));
+  }
+
+  // log file setup
+  logFileName = getAvailableFileName(logFileName);
+  Serial.println(String("Data file : ") + String(logFileName));
+  Serial.println(logFileName.length());
+//  logFile = SD.open(logFileName, FILE_WRITE);
+//  logHeader();
 
   // BMP280 setup
   //initializing BMP280 with IÂ²C alternate address 0x76 instead of 0x77
   BMP280Status = bmp.begin(0x76);       // start com with BMP280
   if (BMP280Status < 1) {               // check BMP280 status
-    Serial.println(F("BMP280 initialization unsuccessful, check wiring ! Status: "));
+    Serial.print(F("BMP280 initialization unsuccessful, check wiring ! Status: "));
     Serial.println(BMP280Status);
   } else {
     Serial.println(F("BMP280 initialization successful."));
@@ -91,18 +98,23 @@ void setup() {
                   Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
                   Adafruit_BMP280::FILTER_X16,      /* Filtering. */
                   //                  Adafruit_BMP280::STANDBY_MS_500   /* Standby time. */
-//                                    Adafruit_BMP280::STANDBY_MS_125
+                  //                                    Adafruit_BMP280::STANDBY_MS_125
                   Adafruit_BMP280::STANDBY_MS_1
                  );
 
-  // SD card 
-  Serial.print("Initializing SD card...");
-  SD.begin(chipSelect);
-//  if (!SD.begin(chipSelect)) {                        // see if the card is present and can be initialized
-//    Serial.println("Card failed, or not present");    // don't do anything more:
-//    while (1);
-//  }
-  Serial.println("card initialized.");
+  // MPU9250 setup
+  //  IMUstatus = IMU.begin();             // start communication with IMU
+  //  if (IMUstatus < 1) {                 // check IMU status
+  //    Serial.println(F("IMU initialization unsuccessful, check IMU wiring ! Status: "));
+  //    Serial.println(IMUstatus);
+  //  } else {
+  //    Serial.println(F("IMU initialization successful."));
+  //  }
+  //  IMU.setAccelRange(MPU9250::ACCEL_RANGE_8G);         // setting the accelerometer full scale range to +/-8G
+  //  IMU.setGyroRange(MPU9250::GYRO_RANGE_500DPS);       // setting the gyroscope full scale range to +/-500 deg/s
+  //  IMU.setDlpfBandwidth(MPU9250::DLPF_BANDWIDTH_20HZ); // setting DLPF bandwidth to 20 Hz
+  //  IMU.setSrd(19);                                     // setting SRD to 19 for a 50 Hz update rate
+
 }
 
 //////////////////////
@@ -114,11 +126,12 @@ void loop() {
   */
 
   fds.setAlt(bmp.readAltitude(fds.getQnh()));
-  
-//  debugAltimeter();
-//  display_gy91_data();
-  logDataOnCard();
-  
+
+  //  debugAltimeter();
+  //  display_gy91_data();
+//  logHeader();        // can't hav this to work 
+  logDataInFile();
+
   switch (fds.flightPhase) {
     case 0: preflight();
       break;
@@ -136,20 +149,49 @@ void loop() {
 //////////////////////
 // METHODS
 
-void logDataOnCard(){
-  File dataFile = SD.open("datalog.txt", FILE_WRITE);
-  // if the file is available, write to it:
-  if (dataFile) {
-    dataFile.print(String(millis()) + F("\t")); /* Adjusted to local forecast! */   
-    dataFile.print(String(fds.getAlt()) + F("\t")); /* Adjusted to local forecast! */
-    dataFile.print(String(fds.getSmoothedAlt()) + F("\t"));
-    dataFile.print(F("\n"));
-    dataFile.close();
+// Log handling
+//void logHeader() {
+//  if(!headed){
+//    logFile = SD.open(logFileName, FILE_WRITE);
+//    logFile.print("Alt\tSmoothedAlt\tLoopTime\tMaxAlt\tMinAlt\t");
+//    logFile.print("vario\tsmVario\tgetMaxVario\tgetMinVario\tisApogee\t");
+//    logFile.print(F("\n"));
+//    logFile.close();
+//    headed = true;
+//  }
+//  
+//}
+
+void logDataInFile() {
+  logFile = SD.open(logFileName, FILE_WRITE);
+  logFile.print(String(millis()) + F("\t"));
+  logFile.print(String(fds.getAlt()) + F("\t"));
+  logFile.print(String(fds.getSmoothedAlt()) + F("\t"));
+  logFile.print(String(fds.getLoopTime()) + F("\t"));
+  logFile.print(String(fds.getMaxAlt()) + F("\t"));
+  logFile.print(String(fds.getMinAlt()) + F("\t"));
+  logFile.print(String(fds.vario()) + F("\t"));
+  logFile.print(String(fds.smVario()) + F("\t"));
+  logFile.print(String(fds.getMaxVario()) + F("\t"));
+  logFile.print(String(fds.getMinVario()) + F("\t"));
+  logFile.print(String(fds.isApogee()) + F("\t"));
+  logFile.print(F("\n"));
+  logFile.close();
+//  Serial.print(String(fds.getAlt()) + F("\n"));
+}
+
+String getAvailableFileName(String fName) {
+  File dir =  SD.open("/");
+  fName.toUpperCase();
+  fName = fName.substring(0, 6);
+  int fileCount = 0;
+  while (File entry =  dir.openNextFile()) {
+    if (!entry.isDirectory() && String(entry.name()).startsWith(fName)) {
+       fileCount++;
+    }
+    entry.close();
   }
-  // if the file isn't open, pop up an error:
-  else {
-    Serial.println("error opening datalog.txt");
-  }
+  return(String(fName) + "_" + String(fileCount));
 }
 
 // FLIGHT PHASES
@@ -177,8 +219,8 @@ void readyToLaunch() {
 
 void inFlight() {
   //if (digitalRead(tiltButtonPin) == HIGH) {
-  if(fds.isApogee()){
-   latch.openLatch();
+  if (fds.isApogee()) {
+    latch.openLatch();
     digitalWrite(armedLedPin, LOW);
     digitalWrite(inFlightLedPin, LOW);
     fds.flightPhase = 3;
@@ -187,13 +229,13 @@ void inFlight() {
 }
 
 //void chuteDeployed(){
-//  
+//
 //}
 
 
 //void debugAltimeter(){
 //  if (true) {
-//    Serial.print(String(millis()) + F("\t")); /* Adjusted to local forecast! */   
+//    Serial.print(String(millis()) + F("\t")); /* Adjusted to local forecast! */
 //    Serial.print(String(fds.getAlt()) + F("\t")); /* Adjusted to local forecast! */
 //    Serial.print(String(fds.getSmoothedAlt()) + F("\t"));
 //    Serial.print(String(fds.getMaxAlt()) + F("\t"));
@@ -207,7 +249,7 @@ void inFlight() {
 //    Serial.print(F("\n"));
 //  }
 //}
-  
+
 
 // sensors data handling
 //void display_gy91_data() {
@@ -257,7 +299,7 @@ void inFlight() {
 //      Serial.print(F("\t"));
 //      //      Serial.print(F("=Approx_alt(m) "));
 //      Serial.print(bmp.readAltitude(fds.getQnh()), 6); /* Adjusted to local forecast! */
-//     
+//
 //      Serial.print(F("\t"));
 //      //    int lastMs;                            // keep track of the last loop for the variometer
 //    }

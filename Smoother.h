@@ -11,7 +11,7 @@ class Smoother
     void rstSmTo(float val);
     float getSmVal();
   private:
-    float _rawVals[50];           // set smoother resolution here
+    float _rawVals[35];           // set smoother resolution here
 };
 
 #endif
