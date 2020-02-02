@@ -25,7 +25,7 @@ Cli cli;
 FlightDatas fds;
 
 File logFile;
-String logFileName = "aDATA";      // base name for flight data log file. 6 char max. will be "uppercased", truncated to 6 char and suffixed with "_[0-9]*"
+String logFileName = "DATA";      // base name for flight data log file. 6 char max. will be "uppercased", truncated to 6 char and suffixed with "_[0-9]*"
 bool headed = false;
 
 Latch latch;                            // create Latch object to control the latch servo
@@ -41,7 +41,7 @@ const int launchDetectorPin = 3;        // the number of the launch detector pin
 //const int tiltButtonPin = 4;            // the number of the tilt button pin
 const int chipSelect = 4;               // SD card chipSelect pin
 const int inFlightLedPin = 6;           // the number of the in flight state led's pin
-const int armedLedPin = LED_BUILTIN;    // the number of the armed state led's pin
+//const int armedLedPin = LED_BUILTIN;    // the number of the armed state led's pin
 const int qnh = 1021;
 
 //int IMUstatus;                         // tracks IMU's state
@@ -53,7 +53,7 @@ int BMP280Status;                      // tracks BMP280's state
 void setup() {
   Serial.begin(9600);               // initialize serial communication at 9600 bits per second
   pinMode(inFlightLedPin, OUTPUT);  // initialize in flight led pin as an output.
-  pinMode(armedLedPin, OUTPUT);     // initialize armed led pin as an output.
+  //pinMode(armedLedPin, OUTPUT);     // initialize armed led pin as an output.
 
   pinMode(armButtonPin, INPUT_PULLUP);
   pinMode(launchDetectorPin, INPUT_PULLUP);
@@ -79,9 +79,8 @@ void setup() {
   // log file setup
   logFileName = getAvailableFileName(logFileName);
   Serial.println(String("Data file : ") + String(logFileName));
-  Serial.println(logFileName.length());
-//  logFile = SD.open(logFileName, FILE_WRITE);
-//  logHeader();
+  //  logFile = SD.open(logFileName, FILE_WRITE);
+  //  logHeader();
 
   // BMP280 setup
   //initializing BMP280 with IÂ²C alternate address 0x76 instead of 0x77
@@ -101,20 +100,6 @@ void setup() {
                   //                                    Adafruit_BMP280::STANDBY_MS_125
                   Adafruit_BMP280::STANDBY_MS_1
                  );
-
-  // MPU9250 setup
-  //  IMUstatus = IMU.begin();             // start communication with IMU
-  //  if (IMUstatus < 1) {                 // check IMU status
-  //    Serial.println(F("IMU initialization unsuccessful, check IMU wiring ! Status: "));
-  //    Serial.println(IMUstatus);
-  //  } else {
-  //    Serial.println(F("IMU initialization successful."));
-  //  }
-  //  IMU.setAccelRange(MPU9250::ACCEL_RANGE_8G);         // setting the accelerometer full scale range to +/-8G
-  //  IMU.setGyroRange(MPU9250::GYRO_RANGE_500DPS);       // setting the gyroscope full scale range to +/-500 deg/s
-  //  IMU.setDlpfBandwidth(MPU9250::DLPF_BANDWIDTH_20HZ); // setting DLPF bandwidth to 20 Hz
-  //  IMU.setSrd(19);                                     // setting SRD to 19 for a 50 Hz update rate
-
 }
 
 //////////////////////
@@ -127,19 +112,19 @@ void loop() {
 
   fds.setAlt(bmp.readAltitude(fds.getQnh()));
 
-  //  debugAltimeter();
+  debugAltimeter();
   //  display_gy91_data();
-//  logHeader();        // can't hav this to work 
+  //  logHeader();        // can't hav this to work
   logDataInFile();
 
-  switch (fds.flightPhase) {
+  switch (fds.getFlightPhase()) {
     case 0: preflight();
       break;
     case 1: readyToLaunch();
       break;
     case 2: inFlight();
       break;
-    case 3: //chuteDeployed();
+    case 3: chuteDeployed();
       break;
     case 4: //landed();
       break;
@@ -148,36 +133,80 @@ void loop() {
 
 //////////////////////
 // METHODS
+// FLIGHT PHASES
+void preflight() {
+  cli.readCommand();
+  if ( digitalRead(armButtonPin) == LOW &&
+       digitalRead(launchDetectorPin) == LOW
+     ) {
+    latch.closeLatch();
+    //    digitalWrite(armedLedPin, HIGH);
+    fds.setFlightPhase(1);
+    Serial.println(F("To phase 1"));
+  }
+}
+
+void readyToLaunch() {
+  cli.readCommand();
+
+  if (digitalRead(launchDetectorPin) == HIGH) {
+    digitalWrite(inFlightLedPin, HIGH);
+    //digitalWrite(armedLedPin, LOW);
+    fds.setFlightPhase(2);
+    Serial.println(F("To phase 2"));
+  }
+}
+
+void inFlight() {
+  if (fds.isApogee()) {
+    latch.openLatch();
+    //    digitalWrite(armedLedPin, LOW);
+    digitalWrite(inFlightLedPin, LOW);
+    fds.setFlightPhase(3);
+    Serial.println(F("To phase 3"));
+  }
+}
+
+
+
+void chuteDeployed(){
+  if ( digitalRead(armButtonPin) == LOW ) {
+    Serial.print("blinking " + String(round(fds.getMaxAlt())));
+    dispLatch(round(fds.getMaxAlt()));
+  }
+}
 
 // Log handling
+
 //void logHeader() {
 //  if(!headed){
 //    logFile = SD.open(logFileName, FILE_WRITE);
-//    logFile.print("Alt\tSmoothedAlt\tLoopTime\tMaxAlt\tMinAlt\t");
-//    logFile.print("vario\tsmVario\tgetMaxVario\tgetMinVario\tisApogee\t");
+//    logFile.print("Alt;SmoothedAlt;LoopTime;MaxAlt;MinAlt;");
+//    logFile.print("vario;smVario;getMaxVario;getMinVario;isApogee;");
 //    logFile.print(F("\n"));
 //    logFile.close();
 //    headed = true;
 //  }
-//  
+//
 //}
 
 void logDataInFile() {
   logFile = SD.open(logFileName, FILE_WRITE);
-  logFile.print(String(millis()) + F("\t"));
-  logFile.print(String(fds.getAlt()) + F("\t"));
-  logFile.print(String(fds.getSmoothedAlt()) + F("\t"));
-  logFile.print(String(fds.getLoopTime()) + F("\t"));
-  logFile.print(String(fds.getMaxAlt()) + F("\t"));
-  logFile.print(String(fds.getMinAlt()) + F("\t"));
-  logFile.print(String(fds.vario()) + F("\t"));
-  logFile.print(String(fds.smVario()) + F("\t"));
-  logFile.print(String(fds.getMaxVario()) + F("\t"));
-  logFile.print(String(fds.getMinVario()) + F("\t"));
-  logFile.print(String(fds.isApogee()) + F("\t"));
+  logFile.print(String(millis()) + F(";"));
+  //  logFile.print(String(fds.getLoopTime()) + F(";"));
+  logFile.print(String(fds.getFlightPhase()) + F(";"));
+  logFile.print(String(fds.getAlt()) + F(";"));
+  logFile.print(String(fds.getSmoothedAlt()) + F(";"));
+  logFile.print(String(fds.getMaxAlt()) + F(";"));
+  logFile.print(String(fds.getMinAlt()) + F(";"));
+  logFile.print(String(fds.vario()) + F(";"));
+  logFile.print(String(fds.smVario()) + F(";"));
+  logFile.print(String(fds.getMaxVario()) + F(";"));
+  logFile.print(String(fds.getMinVario()) + F(";"));
+  logFile.print(String(fds.isApogee()) + F(";"));
   logFile.print(F("\n"));
   logFile.close();
-//  Serial.print(String(fds.getAlt()) + F("\n"));
+  //  Serial.print(String(fds.getAlt()) + F("\n"));
 }
 
 String getAvailableFileName(String fName) {
@@ -187,71 +216,96 @@ String getAvailableFileName(String fName) {
   int fileCount = 0;
   while (File entry =  dir.openNextFile()) {
     if (!entry.isDirectory() && String(entry.name()).startsWith(fName)) {
-       fileCount++;
+      fileCount++;
     }
     entry.close();
   }
-  return(String(fName) + "_" + String(fileCount));
+  return (String(fName) + "_" + String(fileCount));
 }
 
-// FLIGHT PHASES
-void preflight() {
-  cli.readCommand();
-  if ( digitalRead(armButtonPin) == LOW &&
-       digitalRead(launchDetectorPin) == LOW
-     ) {
-    latch.closeLatch();
-    digitalWrite(armedLedPin, HIGH);
-    fds.flightPhase = 1;
-    Serial.println(F("To phase 1"));
-  }
-}
 
-void readyToLaunch() {
-  cli.readCommand();
-  if (digitalRead(launchDetectorPin) == HIGH) {
-    digitalWrite(inFlightLedPin, HIGH);
-    digitalWrite(armedLedPin, LOW);
-    fds.flightPhase = 2;
-    Serial.println(F("To phase 2"));
-  }
-}
+// display an int with a led...
+// or the latch as the builtin led pin is used by SD card reader SPI ctx...
 
-void inFlight() {
-  //if (digitalRead(tiltButtonPin) == HIGH) {
-  if (fds.isApogee()) {
-    latch.openLatch();
-    digitalWrite(armedLedPin, LOW);
-    digitalWrite(inFlightLedPin, LOW);
-    fds.flightPhase = 3;
-    Serial.println(F("To phase 3"));
-  }
-}
-
-//void chuteDeployed(){
-//
+//void blinkOnce() {
+//  digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
+//  delay(125);                       // wait for a second
+//  digitalWrite(LED_BUILTIN, LOW);    // turn the LED off by making the voltage LOW
+//  delay(125);
 //}
 
+//void blinkLong() {
+//  digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
+//  delay(2000);                       // wait for a second
+//  digitalWrite(LED_BUILTIN, LOW);    // turn the LED off by making the voltage LOW
+//  delay(500);
+//}
 
-//void debugAltimeter(){
-//  if (true) {
+//void blinkZero() {
+//  for (int i = 0 ; i < 10 ; i++) {
+//    digitalWrite(LED_BUILTIN, HIGH);
+//    delay(20);
+//    digitalWrite(LED_BUILTIN, LOW);
+//    delay(20);
+//  }
+//}
+
+void dispLatch(int integer) {
+  String strinteger = String(integer);
+  int origClosedPos = latch.getClosedPos();
+  
+  latch.setClosedPos(origClosedPos / 2);
+  latch.closeLatch();
+  delay(2000);
+//  blinkLong();
+
+  Serial.println("---------------------------");
+  for (int i = 0 ; i < strinteger.length() ; i++) {
+    int digit = strinteger.charAt(i) - 48 ;     // TODO : find a proper way to convert this
+    Serial.println(digit);
+    
+    if (digit == 0) {
+      latch.openLatch();
+      delay(150);
+      latch.closeLatch();
+//      blinkZero();
+    } else {
+      for (int j = 1 ; j <= digit ; j++) { 
+        latch.setClosedPos((origClosedPos / 2) + (j * (origClosedPos / 20) ));            
+        latch.closeLatch();
+        delay(400);
+//        blinkOnce();
+      }
+      delay(400);
+      latch.setClosedPos(origClosedPos / 2);
+      latch.closeLatch();
+    }
+    delay(1000);
+  }
+  latch.setClosedPos(origClosedPos);
+  latch.openLatch();
+}
+
+
+// sensors data 
+
+void debugAltimeter(){
+  if (true) {
 //    Serial.print(String(millis()) + F("\t")); /* Adjusted to local forecast! */
 //    Serial.print(String(fds.getAlt()) + F("\t")); /* Adjusted to local forecast! */
 //    Serial.print(String(fds.getSmoothedAlt()) + F("\t"));
 //    Serial.print(String(fds.getMaxAlt()) + F("\t"));
 //    Serial.print(String(fds.getMinAlt()) + F("\t"));
-//    Serial.print(String(fds.vario()) + F("\t"));
-//    Serial.print(String(fds.smVario()) + F("\t"));
-//    Serial.print(String(fds.getMaxVario()) + F("\t"));
+    Serial.print(String(fds.vario()) + F("\t"));
+    Serial.print(String(fds.smVario()) + F("\t"));
+    Serial.print(String(fds.getMaxVario()) + F("\t"));
 //    Serial.print(String(fds.getMinVario()) + F("\t"));
 //    Serial.print(String(fds.getLoopTime()) + F("\t"));
-//    Serial.print(String(fds.isApogee()) + F("\n"));
-//    Serial.print(F("\n"));
-//  }
-//}
+    Serial.print(String(fds.isApogee()) + F("\t"));
+    Serial.print(F("\n"));
+  }
+}
 
-
-// sensors data handling
 //void display_gy91_data() {
 //  if (doDisplayGy91Data) {
 //    IMU.readSensor();       // read the sensor

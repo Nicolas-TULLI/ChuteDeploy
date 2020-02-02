@@ -7,10 +7,11 @@ class FlightDatas
 {
   public:
     FlightDatas::FlightDatas();
-    int flightPhase = 0;                   // variable to track flight phases
+    int getFlightPhase();
+    void setFlightPhase(int phase);
+    void resetMinMax(float rstVal);
     int getQnh();
     void setQnh(int qnh);
-    void resetMinMax(float rstVal);
     void setAlt(float alt);
     float getAlt();
     float getSmoothedAlt();
@@ -26,6 +27,7 @@ class FlightDatas
   private:
     Smoother _smAlt;
 //    Smoother _smVario;
+    int _flightPhase = 0;   // variable to track flight phases
     int _qnh = 1013;        // QNH
     int _lastMs;            // time elapsed since last loop for the variometer
     int _now;
@@ -41,8 +43,10 @@ class FlightDatas
     float _maxVario;     
     float _minVario;
 
-    int _fallCountIsApogee = 10; // number of loop falling before apogee
-    int _fallCounter = 0;       //used in isApogee()
+    float _maxVarioConfirmAscent = 0.6 ;  // max vario to be reached to confirm ascent
+    int _fallCountIsApogee = 10;          // number of loop falling before setting apogee
+    int _fallCounter = 0;                 // count number of falling loops
+    int _lauchPhase = 2;                  // to check if we are airborne to reset min/max at launch
 };
 
 #endif

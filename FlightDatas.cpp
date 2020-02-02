@@ -42,13 +42,18 @@ void FlightDatas::setAlt(float alt) {
   _minAlt <= getSmoothedAlt() ? : _minAlt = getSmoothedAlt();
 }
 
-bool FlightDatas::isApogee(){
-  if(_fallCounter>=_fallCountIsApogee){
+bool FlightDatas::isApogee() {
+  if (_fallCounter >= _fallCountIsApogee) {
     return true;
-  }else if(_maxVario > 1 && smVario() < 0){
+  }
+  else if (_maxVario > _maxVarioConfirmAscent &&
+           smVario() < 0 &&
+           _lauchPhase <= _flightPhase) {
     _fallCounter++;
     return false;
-  }else{return false;}
+  } else {
+    return false;
+  }
 }
 
 
@@ -105,4 +110,15 @@ float FlightDatas::getMaxVario() {
 
 float FlightDatas::getMinVario() {
   return _minVario;
+}
+
+int FlightDatas::getFlightPhase() {
+  return _flightPhase;
+}
+
+void FlightDatas::setFlightPhase(int phase) {
+  _flightPhase = phase;
+  if (_lauchPhase == _flightPhase) {
+    _reset = 1;
+  }
 }

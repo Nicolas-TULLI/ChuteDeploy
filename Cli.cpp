@@ -34,7 +34,7 @@ void Cli::_setQnh(String in) {
 }
 
 void Cli::_setLatchOpenPos(String in) {
-  if (_fds -> flightPhase == 0) {
+  if (_fds -> getFlightPhase() == 0) {
     if (in.equals("op\n")) {
       _latch -> setOpenPos(_latch -> getOpenPos() + 5);
     } else if (in.equals("om\n")) {
@@ -45,7 +45,7 @@ void Cli::_setLatchOpenPos(String in) {
 }
 
 void Cli::_setLatchClosedPos(String in) {
-  if (_fds -> flightPhase == 1) {
+  if (_fds -> getFlightPhase() == 1) {
     if (in.equals("cp\n")) {
       _latch -> setClosedPos(_latch -> getClosedPos() + 5);
     } else if (in.equals("cm\n")) {
