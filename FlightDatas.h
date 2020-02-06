@@ -22,7 +22,7 @@ class FlightDatas
     float smVario();
     float getMaxVario();
     float getMinVario();
-    bool isApogee();
+    bool isFalling();
     
   private:
     Smoother _smAlt;
@@ -43,9 +43,9 @@ class FlightDatas
     float _maxVario;     
     float _minVario;
 
-    float _maxVarioConfirmAscent = 0.6 ;  // max vario to be reached to confirm ascent
-    int _fallCountIsApogee = 10;          // number of loop falling before setting apogee
-    int _fallCounter = 0;                 // count number of falling loops
+    float _maxVarioConfirmAscent = 1 ;  // max vario to be reached to confirm ascent
+    int _fallingLoops = 10;          // number of loop falling before setting apogee
+    int _fallCounter = 0;         // count number of falling loops
     int _lauchPhase = 2;                  // to check if we are airborne to reset min/max at launch
 };
 

@@ -42,8 +42,8 @@ void FlightDatas::setAlt(float alt) {
   _minAlt <= getSmoothedAlt() ? : _minAlt = getSmoothedAlt();
 }
 
-bool FlightDatas::isApogee() {
-  if (_fallCounter >= _fallCountIsApogee) {
+bool FlightDatas::isFalling() {
+  if (_fallCounter >= _fallingLoops) {
     return true;
   }
   else if (_maxVario > _maxVarioConfirmAscent &&

@@ -22,7 +22,7 @@ void Latch::init(int pin, int openPos, int closedPos){
 
 void Latch::_moveLatch(int pos) {
   _servo.write(pos);            // set latch to open
-  delay(15);                        // waits for the servo to get there
+  delay(15);                    // waits for the servo to get there
 }
 
 void Latch::openLatch() {

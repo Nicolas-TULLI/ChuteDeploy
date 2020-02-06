@@ -9,9 +9,9 @@ Cli::Cli() {}
 
 //////////////////////
 // methods
-void Cli::init(Latch &latch, FlightDatas &fds) {
-  _latch = &latch;
-  _fds = &fds;
+void Cli::init(Latch *latch, FlightDatas *fds) {
+  _latch = latch;
+  _fds = fds;
 }
 
 void Cli::readCommand() {
@@ -28,7 +28,7 @@ void Cli::readCommand() {
 }
 
 void Cli::_setQnh(String in) {
-  if (in.startsWith("qnh")) {             // looking for QNH command
+  if (in.startsWith("qnh")) {                     // looking for QNH command
     _fds -> setQnh(in.substring(3, 7).toInt());
   }
 }

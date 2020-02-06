@@ -19,13 +19,13 @@
 #include "FlightDatas.h"
 #include "Smoother.h"
 
-//MPU9250 IMU(Wire, 0x68);                // an MPU9250 object with the MPU-9250 sensor on I2C bus 0 with address 0x68
+//MPU9250 IMU(Wire, 0x68);              // an MPU9250 object with the MPU-9250 sensor on I2C bus 0 with address 0x68
 Adafruit_BMP280 bmp;                    // BMP280 from adafruit
 Cli cli;
 FlightDatas fds;
 
 File logFile;
-String logFileName = "DATA";      // base name for flight data log file. 6 char max. will be "uppercased", truncated to 6 char and suffixed with "_[0-9]*"
+String logFileName = "DATA";            // base name for flight data log file. 6 char max. will be "uppercased", truncated to 6 char and suffixed with "_[0-9]*"
 bool headed = false;
 
 Latch latch;                            // create Latch object to control the latch servo
@@ -33,19 +33,21 @@ const int latchPin = 5;                 // the number of the latch's servo signa
 const int latchOpenPos = 3;             // variable for open latch position setting
 const int latchClosedPos = 90;          // variable for closed latch position setting
 
+const int qnh = 1021;
+
 const bool debug = true;
 const bool doDisplayGy91Data = false;
 
-const int armButtonPin = 2;             // the number of the arm pushbutton pin
-const int launchDetectorPin = 3;        // the number of the launch detector pin
+const int armButtonPin = 2;               // the number of the arm pushbutton pin
+const int launchDetectorPin = 3;          // the number of the launch detector pin
 //const int tiltButtonPin = 4;            // the number of the tilt button pin
-const int chipSelect = 4;               // SD card chipSelect pin
-const int inFlightLedPin = 6;           // the number of the in flight state led's pin
+const int chipSelect = 4;                 // SD card chipSelect pin
+const int inFlightLedPin = 6;             // the number of the in flight state led's pin
 //const int armedLedPin = LED_BUILTIN;    // the number of the armed state led's pin
-const int qnh = 1021;
+
 
 //int IMUstatus;                         // tracks IMU's state
-int BMP280Status;                      // tracks BMP280's state
+int BMP280Status;                         // tracks BMP280's state
 
 //////////////////////
 // SETUP
@@ -53,7 +55,7 @@ int BMP280Status;                      // tracks BMP280's state
 void setup() {
   Serial.begin(9600);               // initialize serial communication at 9600 bits per second
   pinMode(inFlightLedPin, OUTPUT);  // initialize in flight led pin as an output.
-  //pinMode(armedLedPin, OUTPUT);     // initialize armed led pin as an output.
+  //pinMode(armedLedPin, OUTPUT);   // initialize armed led pin as an output.
 
   pinMode(armButtonPin, INPUT_PULLUP);
   pinMode(launchDetectorPin, INPUT_PULLUP);
@@ -66,7 +68,7 @@ void setup() {
   latch.openLatch();                     // puts the servo in the opened position
 
   // Cli setup
-  cli.init(latch, fds);
+  cli.init(&latch, &fds);
 
   // SD card setup
   Serial.print(F("Initializing SD card..."));
@@ -112,9 +114,9 @@ void loop() {
 
   fds.setAlt(bmp.readAltitude(fds.getQnh()));
 
-  debugAltimeter();
+  //  debugAltimeter();
   //  display_gy91_data();
-  //  logHeader();        // can't hav this to work
+  //  logHeader();        // can't have this to work
   logDataInFile();
 
   switch (fds.getFlightPhase()) {
@@ -158,7 +160,7 @@ void readyToLaunch() {
 }
 
 void inFlight() {
-  if (fds.isApogee()) {
+  if (fds.isFalling()) {
     latch.openLatch();
     //    digitalWrite(armedLedPin, LOW);
     digitalWrite(inFlightLedPin, LOW);
@@ -182,7 +184,7 @@ void chuteDeployed(){
 //  if(!headed){
 //    logFile = SD.open(logFileName, FILE_WRITE);
 //    logFile.print("Alt;SmoothedAlt;LoopTime;MaxAlt;MinAlt;");
-//    logFile.print("vario;smVario;getMaxVario;getMinVario;isApogee;");
+//    logFile.print("vario;smVario;getMaxVario;getMinVario;isFalling;");
 //    logFile.print(F("\n"));
 //    logFile.close();
 //    headed = true;
@@ -203,7 +205,7 @@ void logDataInFile() {
   logFile.print(String(fds.smVario()) + F(";"));
   logFile.print(String(fds.getMaxVario()) + F(";"));
   logFile.print(String(fds.getMinVario()) + F(";"));
-  logFile.print(String(fds.isApogee()) + F(";"));
+  logFile.print(String(fds.isFalling()) + F(";"));
   logFile.print(F("\n"));
   logFile.close();
   //  Serial.print(String(fds.getAlt()) + F("\n"));
@@ -301,7 +303,7 @@ void debugAltimeter(){
     Serial.print(String(fds.getMaxVario()) + F("\t"));
 //    Serial.print(String(fds.getMinVario()) + F("\t"));
 //    Serial.print(String(fds.getLoopTime()) + F("\t"));
-    Serial.print(String(fds.isApogee()) + F("\t"));
+    Serial.print(String(fds.isFalling()) + F("\t"));
     Serial.print(F("\n"));
   }
 }

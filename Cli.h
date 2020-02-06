@@ -10,7 +10,7 @@ class Cli
   public:
     Cli::Cli();
     void readCommand();
-    void init(Latch &latch, FlightDatas &fds);
+    void init(Latch *latch, FlightDatas *fds);
   private:
     Latch *_latch;
     FlightDatas *_fds;
