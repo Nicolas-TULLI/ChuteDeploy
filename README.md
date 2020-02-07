@@ -4,7 +4,7 @@
 
   sources :
   - available aduino examples
-  - Adafruit_BMP280_Library      modified bmp280 IÂ²C address for alternate one
-  - Advanced_I2C.ino     Brian R Taylor      brian.taylor@bolderflight.com    arduino examples
-  - Datalogger.ino       by Tom Igoe                                          arduino examples
+  - Adafruit_BMP280_Library : modified bmp280 I²C address for alternate one
+  - Advanced_I2C.ino by Brian R Taylor  brian.taylor@bolderflight.com arduino examples
+  - Datalogger.ino by  Igoe                                           arduino examples
 
