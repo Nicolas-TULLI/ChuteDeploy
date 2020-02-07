@@ -1,3 +1,9 @@
+/*
+ * regroup flight datas as the active flight phase, altitude history, 
+ * and computed ones as a "smoothed" altitude reading, the vetical speed (vario).
+ * isFalling() tries to detect fall after apogee
+ */
+ 
 #ifndef FlightDatas_h
 #define FlightDatas_h
 
@@ -10,23 +16,26 @@ class FlightDatas
     int getFlightPhase();
     void setFlightPhase(int phase);
     void resetMinMax(float rstVal);
+    int getLoopTime();    
+    bool isFalling();
+    
     int getQnh();
     void setQnh(int qnh);
     void setAlt(float alt);
     float getAlt();
     float getSmoothedAlt();
-    int getLoopTime();
+
     float getMaxAlt();
     float getMinAlt();
+    
     float vario();
     float smVario();
     float getMaxVario();
     float getMinVario();
-    bool isFalling();
     
   private:
     Smoother _smAlt;
-//    Smoother _smVario;
+    
     int _flightPhase = 0;   // variable to track flight phases
     int _qnh = 1013;        // QNH
     int _lastMs;            // time elapsed since last loop for the variometer

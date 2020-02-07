@@ -1,3 +1,9 @@
+/*
+ * sort of "commande line interface" to configure the system.
+ * mostly set the open and closed position of the latch mechanism
+ * and set the Qnh
+*/
+
 #ifndef Cli_h
 #define Cli_h
 

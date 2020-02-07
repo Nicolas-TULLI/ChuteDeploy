@@ -1,6 +1,3 @@
-/*
- * 
- */
 #include "Arduino.h"
 #include "Latch.h"
 

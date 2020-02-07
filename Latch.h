@@ -1,6 +1,7 @@
 /*
- * 
+ * ease the use of a servo motor as a door latch
  */
+ 
 #ifndef Latch_h
 #define Latch_h
 
