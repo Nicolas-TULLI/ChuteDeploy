@@ -52,10 +52,10 @@ class FlightDatas
     float _maxVario;     
     float _minVario;
 
-    float _maxVarioConfirmAscent = 1 ;  // max vario to be reached to confirm ascent
+    float _maxVarioConfirmAscent = 1 ;  // max vario to be reached to confirm ascent in m/s
     int _fallingLoops = 10;          // number of loop falling before setting apogee
     int _fallCounter = 0;         // count number of falling loops
-    int _lauchPhase = 2;                  // to check if we are airborne to reset min/max at launch
+    int _launchPhase = 2;                  // to check if we are airborne to reset min/max at launch
 };
 
 #endif

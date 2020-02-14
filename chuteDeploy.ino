@@ -14,7 +14,9 @@
 #include <SPI.h>
 #include <SD.h>
 #include <Adafruit_BMP280.h>
-//#include "MPU9250.h"                  // no more room in memory for mag and gyros, no orientation datas...
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include "MPU9250.h"                  // no more room in memory for mag and gyros, no orientation datas...
 #include "Latch.h"
 #include "Cli.h"
 #include "FlightDatas.h"
@@ -51,7 +53,7 @@ const int inFlightLedPin = 6;             // the number of the in flight state l
 //int IMUstatus;                          // tracks IMU's state
 int BMP280Status;                         // tracks BMP280's state
 
-//////////////////////
+//////////////////////////////////////////////////////////////////
 // SETUP
 
 void setup() {
@@ -66,7 +68,7 @@ void setup() {
   fds.setQnh(qnh);
 
   // Latch setup
-  latch.init(latchPin, latchOpenPos, latchClosedPos); // attaches the servo to its intended pin 
+  latch.init(latchPin, latchOpenPos, latchClosedPos); // attaches the servo to its intended pin
   latch.openLatch();                                  // puts the servo in the opened position
 
   // Cli setup
@@ -84,7 +86,7 @@ void setup() {
   logFileName = getAvailableFileName(logFileName);
   Serial.println(String("Data file : ") + String(logFileName));
   //  logFile = SD.open(logFileName, FILE_WRITE);
-  //  logHeader();                                    // can't have this to work, yet
+  //  logHeader();                                    // can't have this to work, yet...
 
   // BMP280 setup
   //initializing BMP280 with I²C alternate address 0x76 instead of default 0x77
@@ -106,7 +108,7 @@ void setup() {
                  );
 }
 
-//////////////////////
+//////////////////////////////////////////////////////////////////
 // LOOP
 
 void loop() {
@@ -115,7 +117,7 @@ void loop() {
 
   fds.setAlt(bmp.readAltitude(fds.getQnh()));     // records altitude in flight data object for computing vertical speed and other stuff
   logDataInFile();                                // put this loop flight datas on a line in the file on card
-    
+
   //  debugAltimeter();
   //  display_gy91_data();
 
@@ -134,16 +136,16 @@ void loop() {
   }
 }
 
-//////////////////////
+//////////////////////////////////////////////////////////////////
 // METHODS
 
 // FLIGHT PHASES
 
 /*
- * latch is open, ready to be closed when the system is armed
- * the opened postition of the latch cand be adjusted using serial interface
- * the system arms when the arm button is pressed and lauch detection  break wire must be closed
- */
+   latch is open, ready to be closed when the system is armed
+   the opened postition of the latch can be adjusted using serial interface command 
+   the system arms when the arm button is pressed and lauch detection break wire is closed
+*/
 void preflight() {
   cli.readCommand();
   if ( digitalRead(armButtonPin) == LOW &&
@@ -157,9 +159,9 @@ void preflight() {
 }
 
 /*
- * the latch is closed, its closed position can be adjusted using cli.
- * when the break wire is opened, next flight phase is activated
- */
+   the latch is closed, its closed position can be adjusted using cli.
+   when the break wire is opened, next flight phase is activated
+*/
 void readyToLaunch() {
   cli.readCommand();
 
@@ -172,10 +174,10 @@ void readyToLaunch() {
 }
 
 /*
- * YEEEEEEEEEEEHAAAAAAAAAAAAAAAAAAAAAAAA !!!!!!!!!!!!!!!!!!!!!!
- * if the whole thing survives the launch, checks if the rocket is falling
- * then release the chute
- */
+   YEEEEEEEEEEEHAAAAAAAAAAAAAAAAAAAAAAAA !!!!!!!!!!!!!!!!!!!!!!
+   if the whole thing survives the launch, checks if the rocket is falling
+   then release the chute
+*/
 void inFlight() {
   if (fds.isFalling()) {
     latch.openLatch();
@@ -187,14 +189,13 @@ void inFlight() {
 }
 
 /*
- * rocket is falling (hopefully) under a good canopy, sun is shining
- * if the user get back to the rocket before the battery dies, the latch can display the peek altitude
- * will be moddified to display total ascent instead
- */
+   rocket is falling (hopefully) under a good canopy, sun is shining
+   if the user get back to the rocket before the battery dies, the latch can display flight max elevation (max alt - start alt)
+*/
 void chuteDeployed() {
   if ( digitalRead(armButtonPin) == LOW ) {
     Serial.print("blinking " + String(round(fds.getMaxAlt())));
-    dispLatch(round(fds.getMaxAlt()));
+    dispLatch(round(fds.getMaxAlt() - fds.getMinAlt()));
   }
 }
 
@@ -213,8 +214,8 @@ void chuteDeployed() {
 //}
 
 /*
- * logs flight datas in file
- */
+   logs flight datas in file
+*/
 void logDataInFile() {
   logFile = SD.open(logFileName, FILE_WRITE);
   logFile.print(String(millis()) + F(";"));
@@ -235,8 +236,9 @@ void logDataInFile() {
 }
 
 /*
- * reads the root directory of the SD card to choose an available file name for this session
- */
+   reads the root directory of the SD card to choose an available file name for this flight session
+   final file name is maximum 8 char long
+*/
 String getAvailableFileName(String fName) {
   File dir =  SD.open("/");
   fName.toUpperCase();
@@ -253,7 +255,7 @@ String getAvailableFileName(String fName) {
 
 
 /* display an int with a led...
- * or the latch as the builtin led pin is used by SD card reader SPI connection...
+   or the latch as the builtin led pin is used by SD card reader SPI connection...
 */
 
 //void blinkOnce() {
@@ -280,7 +282,7 @@ String getAvailableFileName(String fName) {
 //}
 
 /*
- * uses the latch to display an integer
+   uses the latch to display an integer
 */
 void dispLatch(int integer) {
   String strinteger = String(integer);
@@ -319,22 +321,22 @@ void dispLatch(int integer) {
 
 // sensors data
 
-//void debugAltimeter() {
-//  if (true) {
-//    //    Serial.print(String(millis()) + F("\t"));
-//    //    Serial.print(String(fds.getAlt()) + F("\t"));
-//    //    Serial.print(String(fds.getSmoothedAlt()) + F("\t"));
-//    //    Serial.print(String(fds.getMaxAlt()) + F("\t"));
-//    //    Serial.print(String(fds.getMinAlt()) + F("\t"));
-//    Serial.print(String(fds.vario()) + F("\t"));
-//    Serial.print(String(fds.smVario()) + F("\t"));
-//    Serial.print(String(fds.getMaxVario()) + F("\t"));
-//    //    Serial.print(String(fds.getMinVario()) + F("\t"));
-//    //    Serial.print(String(fds.getLoopTime()) + F("\t"));
-//    Serial.print(String(fds.isFalling()) + F("\t"));
-//    Serial.print(F("\n"));
-//  }
-//}
+void debugAltimeter() {
+  if (true) {
+    //    Serial.print(String(millis()) + F("\t"));
+    Serial.print(String(fds.getAlt()) + F("\t"));
+    Serial.print(String(fds.getSmoothedAlt()) + F("\t"));
+    //    Serial.print(String(fds.getMaxAlt()) + F("\t"));
+    //    Serial.print(String(fds.getMinAlt()) + F("\t"));
+    Serial.print(String(fds.vario()) + F("\t"));
+    Serial.print(String(fds.smVario()) + F("\t"));
+    Serial.print(String(fds.getMaxVario()) + F("\t"));
+    //    Serial.print(String(fds.getMinVario()) + F("\t"));
+    Serial.print(String(fds.getLoopTime()) + F("\t"));
+    Serial.print(String(fds.isFalling()) + F("\t"));
+    Serial.print(F("\n"));
+  }
+}
 
 //void display_gy91_data() {
 //  if (doDisplayGy91Data) {

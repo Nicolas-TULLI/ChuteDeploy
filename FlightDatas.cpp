@@ -48,7 +48,7 @@ bool FlightDatas::isFalling() {
   }
   else if (_maxVario > _maxVarioConfirmAscent &&
            smVario() < 0 &&
-           _lauchPhase <= _flightPhase) {
+           _launchPhase <= _flightPhase) {
     _fallCounter++;
     return false;
   } else {
@@ -118,7 +118,7 @@ int FlightDatas::getFlightPhase() {
 
 void FlightDatas::setFlightPhase(int phase) {
   _flightPhase = phase;
-  if (_lauchPhase == _flightPhase) {
+  if (_launchPhase == _flightPhase) {
     _reset = 1;
   }
 }
