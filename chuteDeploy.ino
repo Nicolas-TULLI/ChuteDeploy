@@ -13,45 +13,47 @@
 #include <Wire.h>
 #include <SPI.h>
 #include <SD.h>
-#include <Adafruit_BMP280.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-#include "MPU9250.h"                  // no more room in memory for mag and gyros, no orientation datas...
+
+//#include <Adafruit_BMP280.h>
+#include <Adafruit_BMP085.h>
+
 #include "Latch.h"
 #include "Cli.h"
 #include "FlightDatas.h"
 #include "Smoother.h"
 
-//MPU9250 IMU(Wire, 0x68);              // an MPU9250 object with the MPU-9250 sensor on I2C bus 0 with address 0x68
+// disabling features on smaller boards
+//#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__)
+//const String chip = "uno";
+//#elif defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
+//const String chip = "mega";
+//#endif
 
-Adafruit_BMP280 bmp;                    // BMP280 from adafruit
+//Adafruit_BMP280 bmp;                    // BMP280 from adafruit
+Adafruit_BMP085 bmp;
 Cli cli;
 FlightDatas fds;
 
 File logFile;
 String logFileName = "DATA";            // base name for flight data log file. 6 char max. will be "uppercased", truncated to 6 char and suffixed with "_[0-9]*"
-bool headed = false;
+//bool headed = false;
 
 Latch latch;                            // create Latch object to control the chute deployment servo
-const int latchPin = 5;                 // the number of the latch's servo signal pin
+const int latchPin = 6;                 // the number of the latch's servo signal pin
 const int latchOpenPos = 3;             // variable for open latch position setting
 const int latchClosedPos = 90;          // variable for closed latch position setting
-
-const int qnh = 1021;
 
 const bool debug = true;
 const bool doDisplayGy91Data = false;
 
 const int armButtonPin = 2;               // the number of the arm pushbutton pin
 const int launchDetectorPin = 3;          // the number of the launch detector pin
-//const int tiltButtonPin = 4;            // the number of the tilt button pin
-const int chipSelect = 4;                 // SD card chipSelect pin
-const int inFlightLedPin = 6;             // the number of the in flight state led's pin
+const int sdChipSelectPin = 10;            // SD card sdChipSelectPin pin
+const int inFlightLedPin = 5;             // the number of the in flight state led's pin
 //const int armedLedPin = LED_BUILTIN;    // the number of the armed state led's pin
 
-
-//int IMUstatus;                          // tracks IMU's state
-int BMP280Status;                         // tracks BMP280's state
+int BMPStatus;                         // tracks BMP280's state
+const float qnh = 102600;
 
 //////////////////////////////////////////////////////////////////
 // SETUP
@@ -76,7 +78,7 @@ void setup() {
 
   // SD card setup
   Serial.print(F("Initializing SD card..."));
-  if (SD.begin(chipSelect)) {                        // see if the card is present and can be initialized
+  if (SD.begin(sdChipSelectPin)) {                        // see if the card is present and can be initialized
     Serial.println(F(" Card initialized."));
   } else {
     Serial.println(F(" Card failed, or not present."));
@@ -90,22 +92,23 @@ void setup() {
 
   // BMP280 setup
   //initializing BMP280 with I²C alternate address 0x76 instead of default 0x77
-  BMP280Status = bmp.begin(0x76);                     // start com with BMP280
-  if (BMP280Status < 1) {                             // check BMP280 status
+  BMPStatus = bmp.begin(0x77);                     // start com with BMP280
+  if (BMPStatus < 1) {                             // check BMP280 status
     Serial.print(F("BMP280 initialization unsuccessful, check wiring ! Status: "));
-    Serial.println(BMP280Status);
+    Serial.println(BMPStatus);
   } else {
     Serial.println(F("BMP280 initialization successful."));
   }
 
+#ifdef __BMP280_H__                                 // BMP280 settings
   bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,     /* Operating Mode. */
                   Adafruit_BMP280::SAMPLING_X16,     /* Temp. oversampling */
                   Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
                   Adafruit_BMP280::FILTER_X16,      /* Filtering. */
-                  //                  Adafruit_BMP280::STANDBY_MS_500   /* Standby time. */
-                  //                                    Adafruit_BMP280::STANDBY_MS_125
-                  Adafruit_BMP280::STANDBY_MS_1
+                  Adafruit_BMP280::STANDBY_MS_1     /* Standby time. STANDBY_MS_500  STANDBY_MS_125 */
                  );
+#endif
+
 }
 
 //////////////////////////////////////////////////////////////////
@@ -116,9 +119,10 @@ void loop() {
       each method is responsible of switching to the next */
 
   fds.setAlt(bmp.readAltitude(fds.getQnh()));     // records altitude in flight data object for computing vertical speed and other stuff
+//  fds.setAlt(bmp.readAltitude(1026.00));
   logDataInFile();                                // put this loop flight datas on a line in the file on card
 
-  //  debugAltimeter();
+  debugAltimeter();
   //  display_gy91_data();
 
 
@@ -143,7 +147,7 @@ void loop() {
 
 /*
    latch is open, ready to be closed when the system is armed
-   the opened postition of the latch can be adjusted using serial interface command 
+   the opened postition of the latch can be adjusted using serial interface command
    the system arms when the arm button is pressed and lauch detection break wire is closed
 */
 void preflight() {
@@ -323,7 +327,7 @@ void dispLatch(int integer) {
 
 void debugAltimeter() {
   if (true) {
-    //    Serial.print(String(millis()) + F("\t"));
+    Serial.print(String(fds.getQnh()) + F("\t"));
     Serial.print(String(fds.getAlt()) + F("\t"));
     Serial.print(String(fds.getSmoothedAlt()) + F("\t"));
     //    Serial.print(String(fds.getMaxAlt()) + F("\t"));

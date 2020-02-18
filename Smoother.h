@@ -1,5 +1,5 @@
 /*
- * stores history of a value and give a 
+ * stores history of a value and give a mean value 
  */
 #ifndef Smoother_h
 #define Smoother_h

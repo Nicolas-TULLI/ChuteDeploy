@@ -10,11 +10,11 @@ FlightDatas::FlightDatas() {}
 // methods
 
 // QNH
-int FlightDatas::getQnh() {
+float FlightDatas::getQnh() {
   return _qnh;
 }
 
-void FlightDatas::setQnh(int qnh) {
+void FlightDatas::setQnh(float qnh) {
   _qnh = qnh;
   _reset = 1;
 }

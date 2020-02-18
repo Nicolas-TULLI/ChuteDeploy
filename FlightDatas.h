@@ -19,8 +19,8 @@ class FlightDatas
     int getLoopTime();    
     bool isFalling();
     
-    int getQnh();
-    void setQnh(int qnh);
+    float getQnh();
+    void setQnh(float qnh);
     void setAlt(float alt);
     float getAlt();
     float getSmoothedAlt();
@@ -37,7 +37,7 @@ class FlightDatas
     Smoother _smAlt;
     
     int _flightPhase = 0;   // variable to track flight phases
-    int _qnh = 1013;        // QNH
+    float _qnh = 101300;        // QNH
     int _lastMs;            // time elapsed since last loop for the variometer
     int _now;
     int _reset = 0;         // used to follow up reset state, need two actualy
@@ -53,9 +53,9 @@ class FlightDatas
     float _minVario;
 
     float _maxVarioConfirmAscent = 1 ;  // max vario to be reached to confirm ascent in m/s
-    int _fallingLoops = 10;          // number of loop falling before setting apogee
-    int _fallCounter = 0;         // count number of falling loops
-    int _launchPhase = 2;                  // to check if we are airborne to reset min/max at launch
+    int _fallingLoops = 10;             // number of loop falling before setting apogee
+    int _fallCounter = 0;               // count number of falling loops
+    int _launchPhase = 2;               // to check if we are airborne to reset min/max at launch
 };
 
 #endif

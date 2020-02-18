@@ -29,7 +29,7 @@ void Cli::readCommand() {
 
 void Cli::_setQnh(String in) {
   if (in.startsWith("qnh")) {                     // looking for QNH command
-    _fds -> setQnh(in.substring(3, 7).toInt());
+    _fds -> setQnh(in.substring(3, 9).toFloat());
   }
 }
 
