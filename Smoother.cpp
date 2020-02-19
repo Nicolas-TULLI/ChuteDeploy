@@ -11,9 +11,9 @@ Smoother::Smoother() {}
 void Smoother::addSmVal(float val) {
   // shifting array one element downand adding last val on top
   memmove(_rawVals + 1, _rawVals, sizeof(_rawVals) - sizeof(_rawVals[0]));
-//  for (int i = sizeof(_rawVals) / sizeof(_rawVals[0]) - 1 ; i != 0 ; i--) {
-//    _rawVals[i] = _rawVals[i - 1];
-//  }
+  //  for (int i = sizeof(_rawVals) / sizeof(_rawVals[0]) - 1 ; i != 0 ; i--) {
+  //    _rawVals[i] = _rawVals[i - 1];
+  //  }
   _rawVals[0] = val;
 }
 

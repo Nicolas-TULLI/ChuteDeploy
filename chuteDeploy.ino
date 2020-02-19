@@ -4,7 +4,7 @@
 
   sources
   - available aduino examples
-  - Adafruit_BMP280_Library      modified bmp280 IÂ²C address for alternate one
+  - Adafruit Libraries for BMP280 and BMP180
   - Advanced_I2C.ino     Brian R Taylor      brian.taylor@bolderflight.com    arduino examples
   - Datalogger.ino       by Tom Igoe                                          arduino examples
 */
@@ -14,46 +14,43 @@
 #include <SPI.h>
 #include <SD.h>
 
-//#include <Adafruit_BMP280.h>
-#include <Adafruit_BMP085.h>
-
 #include "Latch.h"
 #include "Cli.h"
 #include "FlightDatas.h"
 #include "Smoother.h"
 
-// disabling features on smaller boards
-//#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__)
-//const String chip = "uno";
-//#elif defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-//const String chip = "mega";
-//#endif
+// comment/uncomment the library corresponding to the altimeter you're using
+#include <Adafruit_BMP085.h>
+//#include <Adafruit_BMP280.h>
 
-//Adafruit_BMP280 bmp;                    // BMP280 from adafruit
-Adafruit_BMP085 bmp;
-Cli cli;
-FlightDatas fds;
-
-File logFile;
-String logFileName = "DATA";            // base name for flight data log file. 6 char max. will be "uppercased", truncated to 6 char and suffixed with "_[0-9]*"
-//bool headed = false;
-
-Latch latch;                            // create Latch object to control the chute deployment servo
+#ifdef ADAFRUIT_BMP085_H
+Adafruit_BMP085 bmp;                    // BMP085/180 from adafruit
+const byte bmpI2cAddr = 0X77 ;
+const int sdChipSelectPin = 10;         // SD card sdChipSelectPin pin
 const int latchPin = 6;                 // the number of the latch's servo signal pin
+const int inFlightLedPin = 5;           // the number of the in flight state led's pin
+#endif
+#ifdef __BMP280_H__
+Adafruit_BMP280 bmp;                    // BMP280 from adafruit
+const byte bmpI2cAddr = 0X76 ;          // alternate I2c address for GY-91
+const int sdChipSelectPin = 4;          // SD card sdChipSelectPin pin
+const int latchPin = 5;                 // the number of the latch's servo signal pin
+const int inFlightLedPin = 6;           // the number of the in flight state led's pin
+#endif
+
+Cli cli;                                // command line interface to set qnh and latch postions via serial
+FlightDatas fds;                        // flight datas structure
+Latch latch;                            // Latch object to control the chute deployment servo
+
 const int latchOpenPos = 3;             // variable for open latch position setting
 const int latchClosedPos = 90;          // variable for closed latch position setting
+const int armButtonPin = 2;             // the number of the arm pushbutton pin
+const int launchDetectorPin = 3;        // the number of the launch detector pin
 
-const bool debug = true;
-const bool doDisplayGy91Data = false;
-
-const int armButtonPin = 2;               // the number of the arm pushbutton pin
-const int launchDetectorPin = 3;          // the number of the launch detector pin
-const int sdChipSelectPin = 10;            // SD card sdChipSelectPin pin
-const int inFlightLedPin = 5;             // the number of the in flight state led's pin
-//const int armedLedPin = LED_BUILTIN;    // the number of the armed state led's pin
-
-int BMPStatus;                         // tracks BMP280's state
-const float qnh = 102600;
+const float qnh = 1026;
+int BMPStatus;                            // tracks BMP's state
+File logFile;
+String logFileName = "DATA";            // base name for flight data log file. 6 char max. will be "uppercased", truncated to 6 char and suffixed with "_[0-9]*"
 
 //////////////////////////////////////////////////////////////////
 // SETUP
@@ -88,23 +85,22 @@ void setup() {
   logFileName = getAvailableFileName(logFileName);
   Serial.println(String("Data file : ") + String(logFileName));
   //  logFile = SD.open(logFileName, FILE_WRITE);
-  //  logHeader();                                    // can't have this to work, yet...
+  //  logHeader();                                 // can't have this to work, yet...
 
-  // BMP280 setup
-  //initializing BMP280 with I²C alternate address 0x76 instead of default 0x77
-  BMPStatus = bmp.begin(0x77);                     // start com with BMP280
-  if (BMPStatus < 1) {                             // check BMP280 status
+  // BMP setup
+  BMPStatus = bmp.begin(bmpI2cAddr);               // start com with BMP
+  if (BMPStatus < 1) {                             // check BMP status
     Serial.print(F("BMP280 initialization unsuccessful, check wiring ! Status: "));
     Serial.println(BMPStatus);
   } else {
-    Serial.println(F("BMP280 initialization successful."));
+    Serial.println(F("BMP initialization successful."));
   }
 
 #ifdef __BMP280_H__                                 // BMP280 settings
   bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,     /* Operating Mode. */
-                  Adafruit_BMP280::SAMPLING_X16,     /* Temp. oversampling */
-                  Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
-                  Adafruit_BMP280::FILTER_X16,      /* Filtering. */
+                  Adafruit_BMP280::SAMPLING_X1,     /* Temp. oversampling SAMPLING_NONE SAMPLING_X16*/
+                  Adafruit_BMP280::SAMPLING_X1,    /* Pressure oversampling */
+                  Adafruit_BMP280::FILTER_OFF,      /* Filtering. FILTER_OFF FILTER_X16*/
                   Adafruit_BMP280::STANDBY_MS_1     /* Standby time. STANDBY_MS_500  STANDBY_MS_125 */
                  );
 #endif
@@ -117,9 +113,13 @@ void setup() {
 void loop() {
   /* execute the current flight phase methods
       each method is responsible of switching to the next */
-
+#ifdef ADAFRUIT_BMP085_H
+  fds.setAlt(bmp.readAltitude(fds.getQnh() * 100));   // records altitude in flight data object for computing vertical speed and other stuff
+#endif
+#ifdef __BMP280_H__
   fds.setAlt(bmp.readAltitude(fds.getQnh()));     // records altitude in flight data object for computing vertical speed and other stuff
-//  fds.setAlt(bmp.readAltitude(1026.00));
+#endif
+
   logDataInFile();                                // put this loop flight datas on a line in the file on card
 
   debugAltimeter();
@@ -222,8 +222,8 @@ void chuteDeployed() {
 */
 void logDataInFile() {
   logFile = SD.open(logFileName, FILE_WRITE);
-  logFile.print(String(millis()) + F(";"));
-  //  logFile.print(String(fds.getLoopTime()) + F(";"));
+  //logFile.print(String(millis()) + F(";"));
+  logFile.print(String(fds.getLoopTime()) + F(";"));
   logFile.print(String(fds.getFlightPhase()) + F(";"));
   logFile.print(String(fds.getAlt()) + F(";"));
   logFile.print(String(fds.getSmoothedAlt()) + F(";"));
@@ -328,14 +328,15 @@ void dispLatch(int integer) {
 void debugAltimeter() {
   if (true) {
     Serial.print(String(fds.getQnh()) + F("\t"));
+    Serial.print(String(bmp.readPressure()) + F("\t"));
     Serial.print(String(fds.getAlt()) + F("\t"));
     Serial.print(String(fds.getSmoothedAlt()) + F("\t"));
-    //    Serial.print(String(fds.getMaxAlt()) + F("\t"));
-    //    Serial.print(String(fds.getMinAlt()) + F("\t"));
+    Serial.print(String(fds.getMaxAlt()) + F("\t"));
+    Serial.print(String(fds.getMinAlt()) + F("\t"));
     Serial.print(String(fds.vario()) + F("\t"));
     Serial.print(String(fds.smVario()) + F("\t"));
     Serial.print(String(fds.getMaxVario()) + F("\t"));
-    //    Serial.print(String(fds.getMinVario()) + F("\t"));
+    Serial.print(String(fds.getMinVario()) + F("\t"));
     Serial.print(String(fds.getLoopTime()) + F("\t"));
     Serial.print(String(fds.isFalling()) + F("\t"));
     Serial.print(F("\n"));

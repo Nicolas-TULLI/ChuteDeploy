@@ -5,11 +5,11 @@
 //////////////////////
 // constructor
 
-Latch::Latch(){}
+Latch::Latch() {}
 
 //////////////////////
 // methods
-void Latch::init(int pin, int openPos, int closedPos){
+void Latch::init(int pin, int openPos, int closedPos) {
   pinMode(pin, OUTPUT);
   _pin = pin;
   _openPos = openPos;
@@ -33,18 +33,18 @@ void Latch::closeLatch() {
 //////////////////////
 // getters/setters
 
-int Latch::getOpenPos(){
+int Latch::getOpenPos() {
   return _openPos;
 }
 
-void Latch::setOpenPos(int pos){
+void Latch::setOpenPos(int pos) {
   _openPos = pos;
 }
 
-int Latch::getClosedPos(){
+int Latch::getClosedPos() {
   return _closedPos;
 }
 
-void Latch::setClosedPos(int pos){
+void Latch::setClosedPos(int pos) {
   _closedPos = pos;
 }
