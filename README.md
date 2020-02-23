@@ -9,10 +9,18 @@
   - Advanced_I2C.ino by Brian R Taylor  brian.taylor@bolderflight.com arduino examples
   - Datalogger.ino by Tom Igoe                                        arduino examples
 
+<<<<<<< HEAD
   Wiring view : 
   
 ![Wiring](https://github.com/Nicolas-TULLI/ChuteDeploy/blob/master/ChuteDeployClean_bb.png)
 
   Schematic view :
+=======
+  Viring view : 
+  
+![Wiring](https://github.com/Nicolas-TULLI/ChuteDeploy/blob/master/ChuteDeployClean_bb.png)
+
+  Scheme view :
+>>>>>>> 2337124dd3a3ee12326092ea81c8ca2c73cba03a
   
 ![Scheme](https://github.com/Nicolas-TULLI/ChuteDeploy/blob/master/ChuteDeployClean_sch%C3%A9ma.png)
