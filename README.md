@@ -8,3 +8,6 @@
   - Advanced_I2C.ino by Brian R Taylor  brian.taylor@bolderflight.com arduino examples
   - Datalogger.ino by Tom Igoe                                        arduino examples
 
+
+![Wiring](https://github.com/Nicolas-TULLI/ChuteDeploy/blob/master/ChuteDeployClean_bb.png)
+![Scheme](https://github.com/Nicolas-TULLI/ChuteDeploy/blob/master/ChuteDeployClean_bb.png)
