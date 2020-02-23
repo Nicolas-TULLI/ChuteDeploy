@@ -10,4 +10,4 @@
 
 
 ![Wiring](https://github.com/Nicolas-TULLI/ChuteDeploy/blob/master/ChuteDeployClean_bb.png)
-![Scheme](https://github.com/Nicolas-TULLI/ChuteDeploy/blob/master/ChuteDeployClean_bb.png)
+![Scheme](https://github.com/Nicolas-TULLI/ChuteDeploy/blob/master/ChuteDeployClean_sch%C3%A9ma.png)
