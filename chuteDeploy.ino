@@ -47,8 +47,9 @@ const int latchClosedPos = 90;          // variable for closed latch position se
 const int armButtonPin = 2;             // the number of the arm pushbutton pin
 const int launchDetectorPin = 3;        // the number of the launch detector pin
 
-const float qnh = 1026;
-int BMPStatus;                            // tracks BMP's state
+const float qnh = 1026;                 // starting value for qnh
+const float qnhCalibrOffset = 0;   // offset value for barometer calibration 
+int BMPStatus;                          // tracks BMP's state
 File logFile;
 String logFileName = "DATA";            // base name for flight data log file. 6 char max. will be "uppercased", truncated to 6 char and suffixed with "_[0-9]*"
 
@@ -90,7 +91,7 @@ void setup() {
   // BMP setup
   BMPStatus = bmp.begin(bmpI2cAddr);               // start com with BMP
   if (BMPStatus < 1) {                             // check BMP status
-    Serial.print(F("BMP280 initialization unsuccessful, check wiring ! Status: "));
+    Serial.print(F("BMP initialization unsuccessful, check wiring ! Status: "));
     Serial.println(BMPStatus);
   } else {
     Serial.println(F("BMP initialization successful."));
@@ -114,10 +115,10 @@ void loop() {
   /* execute the current flight phase methods
       each method is responsible of switching to the next */
 #ifdef ADAFRUIT_BMP085_H
-  fds.setAlt(bmp.readAltitude(fds.getQnh() * 100));   // records altitude in flight data object for computing vertical speed and other stuff
+  fds.setAlt(bmp.readAltitude((fds.getQnh() + qnhCalibrOffset) * 100));   // records altitude in flight data object for computing vertical speed and other stuff
 #endif
 #ifdef __BMP280_H__
-  fds.setAlt(bmp.readAltitude(fds.getQnh()));     // records altitude in flight data object for computing vertical speed and other stuff
+  fds.setAlt(bmp.readAltitude(fds.getQnh()+ qnhCalibrOffset));     // records altitude in flight data object for computing vertical speed and other stuff
 #endif
 
   logDataInFile();                                // put this loop flight datas on a line in the file on card

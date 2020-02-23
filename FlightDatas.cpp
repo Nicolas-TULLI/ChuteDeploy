@@ -118,7 +118,7 @@ int FlightDatas::getFlightPhase() {
 
 void FlightDatas::setFlightPhase(int phase) {
   _flightPhase = phase;
-  if (_launchPhase == _flightPhase) {
-    _reset = 1;
-  }
+//  if (_launchPhase == _flightPhase) {
+//    _reset = 1;
+//  }
 }
